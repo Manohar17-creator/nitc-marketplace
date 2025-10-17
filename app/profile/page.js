@@ -280,7 +280,7 @@ export default function ProfilePage() {
             {myListings.length === 0 ? (
               <div className="text-center py-12">
                 <Package size={48} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-600 mb-4">You haven't posted any listings yet</p>
+                <p className="text-gray-600 mb-4">You have not posted any listings yet</p>
                 <Link
                   href="/post"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
