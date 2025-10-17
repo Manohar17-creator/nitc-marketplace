@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Upload, X, ArrowLeft } from 'lucide-react'
+import { Upload, X, ArrowLeft, Loader } from 'lucide-react'
 
 export default function PostListing() {
   const router = useRouter()
@@ -14,10 +14,10 @@ export default function PostListing() {
     images: []
   })
   const [loading, setLoading] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState('')
   const [imagePreviews, setImagePreviews] = useState([])
 
-  // Check if user is logged in
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token')
@@ -44,27 +44,72 @@ export default function PostListing() {
     })
   }
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files)
+    
     if (files.length + imagePreviews.length > 3) {
       setError('Maximum 3 images allowed')
       return
     }
 
+    if (files.length === 0) return
+
     setError('')
+    setUploadingImage(true)
 
-    // Create preview URLs
-    const newPreviews = files.map(file => ({
-      url: URL.createObjectURL(file),
-      file: file
-    }))
+    try {
+      const uploadPromises = files.map(async (file) => {
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error('File size must be less than 5MB')
+        }
 
-    setImagePreviews([...imagePreviews, ...newPreviews])
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          throw new Error('Only image files are allowed')
+        }
+
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Upload failed')
+        }
+
+        const data = await response.json()
+        return {
+          url: data.url,
+          preview: data.url
+        }
+      })
+
+      const uploadedImages = await Promise.all(uploadPromises)
+      
+      setImagePreviews([...imagePreviews, ...uploadedImages])
+      setFormData({
+        ...formData,
+        images: [...formData.images, ...uploadedImages.map(img => img.url)]
+      })
+
+    } catch (err) {
+      setError(err.message || 'Failed to upload images')
+    } finally {
+      setUploadingImage(false)
+    }
   }
 
   const removeImage = (index) => {
     const newPreviews = imagePreviews.filter((_, i) => i !== index)
+    const newImages = formData.images.filter((_, i) => i !== index)
+    
     setImagePreviews(newPreviews)
+    setFormData({ ...formData, images: newImages })
   }
 
   const handleSubmit = async (e) => {
@@ -72,7 +117,6 @@ export default function PostListing() {
     setLoading(true)
     setError('')
 
-    // Validation
     if (!formData.title.trim()) {
       setError('Please enter a title')
       setLoading(false)
@@ -98,25 +142,19 @@ export default function PostListing() {
         return
       }
 
-      // In real app, you'd upload images to Cloudinary here
-      // For now, we'll just send the data without images
       const response = await fetch('/api/listings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          ...formData,
-          images: [] // Will add image upload later
-        })
+        body: JSON.stringify(formData)
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        // Show success and redirect
-        alert('Listing posted successfully!')
+        alert('Listing posted successfully! 🎉')
         router.push('/')
       } else {
         setError(data.error || 'Failed to create listing')
@@ -130,7 +168,6 @@ export default function PostListing() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 sticky top-0 z-10 shadow-lg">
         <div className="max-w-2xl mx-auto">
           <button 
@@ -153,7 +190,6 @@ export default function PostListing() {
             </div>
           )}
 
-          {/* Title */}
           <div className="mb-4">
             <label className="block text-gray-700 font-medium mb-2">
               Title <span className="text-red-500">*</span>
@@ -169,7 +205,6 @@ export default function PostListing() {
             />
           </div>
 
-          {/* Description */}
           <div className="mb-4">
             <label className="block text-gray-700 font-medium mb-2">
               Description <span className="text-red-500">*</span>
@@ -188,7 +223,6 @@ export default function PostListing() {
             </p>
           </div>
 
-          {/* Price & Category Row */}
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-gray-700 font-medium mb-2">
@@ -225,7 +259,6 @@ export default function PostListing() {
             </div>
           </div>
 
-          {/* Location */}
           <div className="mb-4">
             <label className="block text-gray-700 font-medium mb-2">
               Location
@@ -235,34 +268,31 @@ export default function PostListing() {
               name="location"
               value={formData.location}
               onChange={handleChange}
-              placeholder="e.g., Mega Hostel, Near Main Gate, PG Near Campus"
+              placeholder="e.g., Mega Hostel, Near Main Gate"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Help buyers find you easily
-            </p>
           </div>
 
-          {/* Images */}
+          {/* Images Section - UPDATED WITH REAL UPLOAD */}
           <div className="mb-6">
             <label className="block text-gray-700 font-medium mb-2">
-              Images (Optional - Max 3)
+              Images (Max 3) {uploadingImage && <span className="text-blue-600">- Uploading...</span>}
             </label>
             
-            {/* Image Preview */}
             {imagePreviews.length > 0 && (
               <div className="grid grid-cols-3 gap-3 mb-3">
                 {imagePreviews.map((preview, index) => (
                   <div key={index} className="relative group">
                     <img
-                      src={preview.url}
+                      src={preview.preview}
                       alt={`Preview ${index + 1}`}
                       className="w-full h-28 object-cover rounded-lg border-2 border-gray-200"
                     />
                     <button
                       type="button"
                       onClick={() => removeImage(index)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      disabled={uploadingImage}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
                     >
                       <X size={16} />
                     </button>
@@ -271,37 +301,45 @@ export default function PostListing() {
               </div>
             )}
 
-            {/* Upload Button */}
             {imagePreviews.length < 3 && (
-              <label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors group">
+              <label className={`flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors group ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <div className="text-center">
-                  <Upload className="mx-auto mb-2 text-gray-400 group-hover:text-blue-500 transition-colors" size={32} />
-                  <span className="text-sm text-gray-600 group-hover:text-blue-600">
-                    Click to upload images
-                  </span>
-                  <p className="text-xs text-gray-400 mt-1">
-                    PNG, JPG up to 5MB each
-                  </p>
+                  {uploadingImage ? (
+                    <>
+                      <Loader className="mx-auto mb-2 text-blue-500 animate-spin" size={32} />
+                      <span className="text-sm text-blue-600">Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mx-auto mb-2 text-gray-400 group-hover:text-blue-500 transition-colors" size={32} />
+                      <span className="text-sm text-gray-600 group-hover:text-blue-600">
+                        Click to upload images
+                      </span>
+                      <p className="text-xs text-gray-400 mt-1">
+                        PNG, JPG up to 5MB each
+                      </p>
+                    </>
+                  )}
                 </div>
                 <input
                   type="file"
                   accept="image/*"
                   multiple
                   onChange={handleImageUpload}
+                  disabled={uploadingImage}
                   className="hidden"
                 />
               </label>
             )}
 
             <p className="mt-2 text-xs text-gray-500">
-              💡 Tip: Add clear photos to get more responses!
+              📸 Images are uploaded to Cloudinary and optimized automatically
             </p>
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || uploadingImage}
             className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
           >
             {loading ? (
@@ -313,10 +351,6 @@ export default function PostListing() {
               'Post Listing'
             )}
           </button>
-
-          <p className="text-center text-xs text-gray-500 mt-4">
-            Your contact info will be visible to interested buyers
-          </p>
         </form>
       </div>
     </div>
