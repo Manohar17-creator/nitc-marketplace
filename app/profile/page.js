@@ -71,6 +71,14 @@ export default function ProfilePage() {
     setEditMode(true)
   }
 
+  const handleMarkAsReunited = async (listingId) => {
+  const listing = myListings.find(l => l._id === listingId)
+  const confirmMessage = listing.lostFoundType === 'lost' 
+    ? 'Did you find your lost item?' 
+    : 'Was the item claimed by its owner?'
+  
+  if (!confirm(confirmMessage)) return
+
   const handleSaveProfile = () => {
     // Save updated profile
     if (typeof window !== 'undefined') {
@@ -147,6 +155,8 @@ export default function ProfilePage() {
     return emojiMap[category] || '📦'
   }
 
+  
+
   const getLostFoundActionButton = (listing, handleMarkAsSold) => {
   if (listing.category !== 'lost-found') return null;
   
@@ -203,11 +213,11 @@ const handleMarkAsSold = async (listingId) => {
     });
 
     if (response.ok) {
-      const successMessage = isLostFound 
-        ? (listing.type === 'lost' ? 'Marked as found! 🎉' : 'Marked as claimed! ✅')
-        : 'Marked as sold! ✅';
-      alert(successMessage);
-      loadMyListings();
+      const successMessage = listing.lostFoundType === 'lost'
+        ? 'Great! Glad you found it! 🎉'
+        : 'Item successfully returned to owner! 🎉'
+      alert(successMessage)
+      loadMyListings()
     }
   } catch (error) {
     alert('Failed to update listing');
@@ -326,12 +336,20 @@ const handleMarkAsSold = async (listingId) => {
                               {listing.description}
                             </p>
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                             listing.status === 'active'
                               ? 'bg-green-100 text-green-700'
+                              : listing.status === 'reunited'
+                              ? 'bg-purple-100 text-purple-700'
+                              : listing.status === 'sold'
+                              ? 'bg-gray-100 text-gray-700'
                               : 'bg-gray-100 text-gray-700'
                           }`}>
-                            {listing.status}
+                            {listing.status === 'reunited' 
+                              ? (listing.lostFoundType === 'lost' ? '✓ Found' : '✓ Claimed')
+                              : listing.status === 'sold'
+                              ? 'Sold'
+                              : 'Active'}
                           </span>
                         </div>
                         
@@ -359,18 +377,26 @@ const handleMarkAsSold = async (listingId) => {
                                 Edit
                             </Link>
 
-                            {/* Replace the existing Mark Sold button with this */}
-                            {listing.category === 'lost-found' 
-                              ? getLostFoundActionButton(listing, handleMarkAsSold)
-                              : listing.status === 'active' && (
+                            {/* Different button for Lost & Found vs Regular Items */}
+                            {listing.category === 'lost-found' ? (
+                              listing.status === 'active' && (
+                                <button
+                                  onClick={() => handleMarkAsReunited(listing._id)}
+                                  className="flex-shrink-0 px-3 py-2 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+                                >
+                                  {listing.lostFoundType === 'lost' ? '✓ Found It' : '✓ Claimed'}
+                                </button>
+                              )
+                            ) : (
+                              listing.status === 'active' && (
                                 <button
                                   onClick={() => handleMarkAsSold(listing._id)}
-                                  className="flex-1 min-w-[80px] px-3 py-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-sm font-medium"
+                                  className="flex-shrink-0 px-3 py-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
                                 >
                                   Mark Sold
                                 </button>
                               )
-                            }
+                            )}
 
                             <button
                               onClick={() => handleDeleteListing(listing._id)}
