@@ -52,11 +52,11 @@ export async function GET(request) {
 }
 
 // POST new listing
+// POST new listing
 export async function POST(request) {
   try {
     const token = request.headers.get('authorization')?.split(' ')[1]
     
-    // Get user info from token or localStorage
     let userInfo = { 
       name: 'Anonymous User',
       phone: '+91 98765 43210',
@@ -107,6 +107,46 @@ export async function POST(request) {
       createdAt: new Date(),
       updatedAt: new Date()
     })
+
+    // ✨ CREATE NOTIFICATIONS FOR ALL USERS ✨
+    try {
+      // Get all users
+      const allUsers = await db.collection('users').find({}).toArray()
+      
+      // Get category emoji
+      const categoryEmojis = {
+        books: '📚',
+        electronics: '💻',
+        tickets: '🎫',
+        rides: '🚗',
+        housing: '🏠',
+        events: '🎉',
+        misc: '🎁'
+      }
+      const emoji = categoryEmojis[category] || '📦'
+
+      // Create notification for each user (except the poster)
+      const notifications = allUsers
+        .filter(user => user._id.toString() !== userInfo.userId?.toString())
+        .map(user => ({
+          userId: user._id,
+          type: 'new_listing',
+          title: 'New Listing Posted',
+          message: `${emoji} ${title} - ₹${price.toLocaleString()}`,
+          listingId: result.insertedId,
+          link: `/listing/${result.insertedId}`,
+          icon: emoji,
+          read: false,
+          createdAt: new Date()
+        }))
+
+      if (notifications.length > 0) {
+        await db.collection('notifications').insertMany(notifications)
+      }
+    } catch (notifError) {
+      console.error('Failed to create notifications:', notifError)
+      // Don't fail the listing creation if notifications fail
+    }
 
     return NextResponse.json({
       message: 'Listing created successfully',
