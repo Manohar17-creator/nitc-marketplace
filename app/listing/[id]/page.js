@@ -173,11 +173,6 @@ export default function ListingDetail({ params }) {
 
 
             {/* Description */}
-            <div className="mb-6">
-              <h2 className="font-semibold text-gray-900 text-lg mb-3">Description</h2>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{listing.description}</p>
-            </div>
-
             <div className="mb-4 sm:mb-6">
         <h2 className="font-semibold text-gray-900 text-base sm:text-lg mb-2 sm:mb-3">Description</h2>
         <p className="text-gray-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap">

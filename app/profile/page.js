@@ -214,100 +214,26 @@ export default function ProfilePage() {
 
       <div className="max-w-4xl mx-auto p-4">
         {/* Profile Card */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                {user.name?.charAt(0).toUpperCase() || 'U'}
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
-                <p className="text-gray-600">{user.email}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              <LogOut size={18} />
-              <span>Logout</span>
-            </button>
-          </div>
-
-          {/* Profile Info */}
-          {!editMode ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 text-gray-700">
-                <Mail size={20} className="text-gray-400" />
-                <span>{user.email}</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-700">
-                <Phone size={20} className="text-gray-400" />
-                <span>{user.phone || 'Not provided'}</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-700">
-                <MapPin size={20} className="text-gray-400" />
-                <span>{user.location || 'Not provided'}</span>
-              </div>
-              
-              <button
-                onClick={handleEditProfile}
-                className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Edit size={18} />
-                <span>Edit Profile</span>
-              </button>
-            </div>
-          ) : (
-            // Edit Mode
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  value={editData.name}
-                  onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input
-                  type="tel"
-                  value={editData.phone}
-                  onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                  placeholder="+91 98765 43210"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <input
-                  type="text"
-                  value={editData.location}
-                  onChange={(e) => setEditData({ ...editData, location: e.target.value })}
-                  placeholder="e.g., Mega Hostel"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              
-              <div className="flex gap-3 mt-4">
-                <button
-                  onClick={handleSaveProfile}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Save Changes
-                </button>
-                <button
-                  onClick={handleCancelEdit}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
+  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4 sm:mb-6">
+    <div className="flex items-center gap-3 sm:gap-4">
+      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl sm:text-3xl font-bold flex-shrink-0">
+        {user.name?.charAt(0).toUpperCase() || 'U'}
+      </div>
+      <div className="min-w-0">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{user.name}</h2>
+        <p className="text-gray-600 text-sm sm:text-base truncate">{user.email}</p>
+      </div>
+    </div>
+    <button
+      onClick={handleLogout}
+      className="flex items-center justify-center sm:justify-start gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors active:scale-95 w-full sm:w-auto"
+    >
+      <LogOut size={18} />
+      <span>Logout</span>
+    </button>
+  </div>
+</div>
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -424,22 +350,22 @@ export default function ProfilePage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-6 grid grid-cols-2 gap-4">
-          <Link
-            href="/post"
-            className="flex items-center justify-center gap-2 p-4 bg-white border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium"
-          >
-            <Plus size={20} />
-            <span>Post New Listing</span>
-          </Link>
-          <Link
-            href="/"
-            className="flex items-center justify-center gap-2 p-4 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-          >
-            <Package size={20} />
-            <span>Browse Listings</span>
-          </Link>
-        </div>
+        <div className="mt-4 sm:mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+  <Link
+    href="/post"
+    className="flex items-center justify-center gap-2 p-3 sm:p-4 bg-white border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium text-sm sm:text-base active:scale-95"
+  >
+    <Plus size={20} />
+    <span>Post New Listing</span>
+  </Link>
+  <Link
+    href="/"
+    className="flex items-center justify-center gap-2 p-3 sm:p-4 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm sm:text-base active:scale-95"
+  >
+    <Package size={20} />
+    <span>Browse Listings</span>
+  </Link>
+</div>
       </div>
     </div>
   )
