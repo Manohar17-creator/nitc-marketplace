@@ -77,7 +77,7 @@ export default function HomePage() {
         placeholder="Search for anything..."
         value={searchQuery}
         onChange={handleSearch}
-        className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-300"
+        className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base text-white-900 placeholder-white-500 focus:outline-none focus:ring-2 focus:ring-blue-300"
       />
     </div>
   </div>
@@ -87,13 +87,19 @@ export default function HomePage() {
       {showMenu && (
         <div className="bg-white border-b shadow-lg p-4">
           <div className="max-w-6xl mx-auto space-y-2">
-            <Link href="/profile" className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3">
-              <User size={20} />
+            <Link 
+              href="/profile" 
+              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 text-gray-900 font-medium"
+            >
+              <User size={20} className="text-gray-700" />
               <span>My Profile</span>
             </Link>
             
-            <Link href="/profile?tab=listings" className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3">
-              <Tag size={20} />
+            <Link 
+              href="/profile?tab=listings" 
+              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 text-gray-900 font-medium"
+            >
+              <Tag size={20} className="text-gray-700" />
               <span>My Listings</span>
             </Link>
             <button 

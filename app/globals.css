@@ -30,6 +30,19 @@ body {
 @tailwind utilities;
 
 @layer base {
+  /* Full height for html and body */
+  html, body {
+    @apply h-full;
+    @apply bg-gray-50;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+
+  /* Mobile viewport height fix */
+  html {
+    height: -webkit-fill-available;
+  }
+
   /* Make all text more visible */
   body {
     @apply text-gray-900;
@@ -54,6 +67,12 @@ body {
 }
 
 @layer utilities {
+  /* Custom min-height for mobile */
+  .min-h-screen-mobile {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -83,4 +102,18 @@ body {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+@supports (-webkit-touch-callout: none) {
+  /* iOS specific viewport height fix */
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Force minimum height even if content is short */
+#__next, 
+[data-nextjs-scroll-focus-boundary] {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
 }

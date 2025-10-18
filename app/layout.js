@@ -16,12 +16,14 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className="h-full">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#2563eb" />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased h-full bg-gray-50">{children}</body>
     </html>
   )
 }
