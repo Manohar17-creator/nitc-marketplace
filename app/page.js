@@ -54,35 +54,24 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 sticky top-0 z-10 shadow-lg">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold">NITC Marketplace</h1>
-              <p className="text-blue-100 text-sm">Buy, Sell & Share on Campus</p>
-            </div>
-            <button 
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
-            >
-              {showMenu ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search for anything..."
-              value={searchQuery}
-              onChange={handleSearch}
-              className="w-full pl-10 pr-4 py-3 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300"
-            />
-          </div>
-        </div>
+      {/* Header - Better mobile spacing */}
+<div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg">
+  <div className="max-w-6xl mx-auto">
+    <div className="flex items-center justify-between mb-3 sm:mb-4">
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold">NITC Marketplace</h1>
+        <p className="text-blue-100 text-xs sm:text-sm">Buy, Sell & Share</p>
       </div>
+      <button 
+        onClick={() => setShowMenu(!showMenu)}
+        className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
+      >
+        {showMenu ? <X size={22} /> : <Menu size={22} />}
+      </button>
+    </div>
+    {/* Search bar here */}
+  </div>
+</div>
 
       {/* Menu Dropdown */}
       {showMenu && (
@@ -114,31 +103,31 @@ export default function HomePage() {
       )}
 
       <div className="max-w-6xl mx-auto p-4">
-        {/* Categories */}
-        <div className="mb-6">
-          <h2 className="font-semibold text-gray-900 mb-3">Categories</h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {categories.map(cat => {
-              const Icon = cat.icon
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`flex-shrink-0 flex flex-col items-center gap-2 p-3 rounded-lg transition-all ${
-                    selectedCategory === cat.id 
-                      ? 'bg-blue-600 text-white shadow-lg scale-105' 
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className={`p-2 rounded-full ${selectedCategory === cat.id ? 'bg-blue-500' : cat.color}`}>
-                    <Icon size={20} className="text-white" />
-                  </div>
-                  <span className="text-xs font-medium whitespace-nowrap">{cat.name}</span>
-                </button>
-              )
-            })}
-          </div>
+        {/* Categories - Better mobile scroll */}
+      <div className="mb-6">
+        <h2 className="font-semibold text-gray-900 mb-3 px-1">Categories</h2>
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide snap-x snap-mandatory">
+          {categories.map(cat => {
+            const Icon = cat.icon
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`flex-shrink-0 snap-start flex flex-col items-center gap-2 p-3 rounded-xl transition-all min-w-[80px] ${
+                  selectedCategory === cat.id 
+                    ? 'bg-blue-600 text-white shadow-lg scale-105' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm'
+                }`}
+              >
+                <div className={`p-2 rounded-full ${selectedCategory === cat.id ? 'bg-blue-500' : cat.color}`}>
+                  <Icon size={20} className="text-white" />
+                </div>
+                <span className="text-xs font-medium text-center leading-tight">{cat.name}</span>
+              </button>
+            )
+          })}
         </div>
+      </div>
 
         {/* Listings */}
         <div className="mb-4 flex items-center justify-between">
@@ -170,10 +159,10 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button - Better mobile positioning */}
       <Link href="/post">
-        <button className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110">
-          <Plus size={28} />
+        <button className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 z-50">
+          <Plus size={24} className="sm:w-7 sm:h-7" />
         </button>
       </Link>
     </div>

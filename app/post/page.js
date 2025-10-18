@@ -190,38 +190,37 @@ export default function PostListing() {
             </div>
           )}
 
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">
-              Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              required
-              placeholder="e.g., iPhone 12 - 128GB, Data Structures Book"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+          {/* All inputs - Better mobile sizing */}
+    <div className="mb-3 sm:mb-4">
+      <label className="block text-gray-700 font-medium mb-2 text-sm sm:text-base">
+        Title <span className="text-red-500">*</span>
+      </label>
+      <input
+        type="text"
+        name="title"
+        value={formData.title}
+        onChange={handleChange}
+        required
+        placeholder="e.g., iPhone 12 - 128GB"
+        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      />
+    </div>
 
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">
-              Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              required
-              rows={4}
-              placeholder="Describe your item in detail... (condition, age, features, etc.)"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              {formData.description.length} characters
-            </p>
-          </div>
+          {/* Description - Mobile friendly */}
+    <div className="mb-3 sm:mb-4">
+      <label className="block text-gray-700 font-medium mb-2 text-sm sm:text-base">
+        Description <span className="text-red-500">*</span>
+      </label>
+      <textarea
+        name="description"
+        value={formData.description}
+        onChange={handleChange}
+        required
+        rows={4}
+        placeholder="Describe your item..."
+        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+      />
+    </div>
 
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
