@@ -176,6 +176,73 @@ export default function ProfilePage() {
     return emojiMap[category] || '📦'
   }
 
+  const getLostFoundActionButton = (listing, handleMarkAsSold) => {
+  if (listing.category !== 'lost-found') return null;
+  
+  if (listing.status !== 'active') return null;
+
+  if (listing.type === 'lost') {
+    return (
+      <button
+        onClick={() => handleMarkAsSold(listing._id)}
+        className="flex-1 min-w-[80px] px-3 py-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-sm font-medium"
+      >
+        Mark as Found
+      </button>
+    );
+  } else {
+    return (
+      <button
+        onClick={() => handleMarkAsSold(listing._id)}
+        className="flex-1 min-w-[80px] px-3 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-sm font-medium"
+      >
+        Mark as Claimed
+      </button>
+    );
+  }
+};
+
+// Then update the handleMarkAsSold function
+const handleMarkAsSold = async (listingId) => {
+  const listing = myListings.find(l => l._id === listingId);
+  const isLostFound = listing.category === 'lost-found';
+  
+  const confirmMessage = isLostFound 
+    ? (listing.type === 'lost' ? 'Mark this item as found?' : 'Mark this item as claimed?')
+    : 'Mark this listing as sold?';
+
+  if (!confirm(confirmMessage)) return;
+
+  try {
+    const token = localStorage.getItem('token');
+    const newStatus = isLostFound 
+      ? (listing.type === 'lost' ? 'found' : 'claimed')
+      : 'sold';
+
+    const response = await fetch(`/api/listings/${listingId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        ...listing,
+        status: newStatus
+      })
+    });
+
+    if (response.ok) {
+      const successMessage = isLostFound 
+        ? (listing.type === 'lost' ? 'Marked as found! 🎉' : 'Marked as claimed! ✅')
+        : 'Marked as sold! ✅';
+      alert(successMessage);
+      loadMyListings();
+    }
+  } catch (error) {
+    alert('Failed to update listing');
+  }
+};
+
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-IN', {
       day: 'numeric',
@@ -321,15 +388,18 @@ export default function ProfilePage() {
                                 Edit
                             </Link>
 
-                            {/* Add Mark Sold button here */}
-                            {listing.status === 'active' && (
-                              <button
-                              onClick={() => handleMarkAsSold(listing._id)}
-                              className="flex-1 min-w-[80px] px-3 py-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-sm font-medium"
-                            >
-                              Mark Sold
-                            </button>
-                            )}
+                            {/* Replace the existing Mark Sold button with this */}
+                            {listing.category === 'lost-found' 
+                              ? getLostFoundActionButton(listing, handleMarkAsSold)
+                              : listing.status === 'active' && (
+                                <button
+                                  onClick={() => handleMarkAsSold(listing._id)}
+                                  className="flex-1 min-w-[80px] px-3 py-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-sm font-medium"
+                                >
+                                  Mark Sold
+                                </button>
+                              )
+                            }
 
                             <button
                               onClick={() => handleDeleteListing(listing._id)}

@@ -127,15 +127,17 @@ export async function POST(request) {
       const emoji = categoryEmojis[category] || '📦'
 
       // Create notification for each user (except the poster)
-      let notificationMessage
+      let notificationMessage;
 if (category === 'lost-found') {
-  if (data.lostFoundType === 'lost') {
-    notificationMessage = `${emoji} Lost: ${title}${data.reward > 0 ? ` - ₹${data.reward} reward` : ''}`
+  // Fix the condition to properly check lostFoundType
+  const isLost = data.type === 'lost'; // Make sure this matches your form field name
+  if (isLost) {
+    notificationMessage = `😢 Lost: ${title}${data.reward ? ` - ₹${data.reward} reward` : ''}`
   } else {
-    notificationMessage = `${emoji} Found: ${title} - Claim it now!`
+    notificationMessage = `😊 Found: ${title} - Claim it now!`
   }
 } else {
-  notificationMessage = `${emoji} ${title} - ₹${price.toLocaleString()}`
+  notificationMessage = `${categoryEmojis[category]} ${title} - ₹${price.toLocaleString()}`
 }
 
         const notifications = allUsers
