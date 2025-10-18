@@ -152,14 +152,16 @@ export default function HomePage() {
       )}
 
       {/* After search bar, before categories */}
-      <div className="mt-4 mb-2">
-        <Link
-          href="/post-lost-found"
-          className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-indigo-600 to-purple-700 text-white py-3 rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-800 transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
-        >
-          <Search size={20} />
-          <span>Lost Something? Found Something?</span>
-        </Link>
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="mt-4 mb-2">
+          <Link
+            href="/post-lost-found"
+            className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-indigo-600 to-purple-700 text-white py-3 rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-800 transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
+          >
+            <Search size={20} />
+            <span>Lost / Found Something?</span>
+          </Link>
+        </div>
       </div>
 
       <div className="max-w-6xl mx-auto p-4 pb-24">
