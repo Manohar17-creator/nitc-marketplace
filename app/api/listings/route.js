@@ -121,7 +121,7 @@ export async function POST(request) {
         rides: '🚗',
         housing: '🏠',
         events: '🎉',
-        misc: '🎁'
+        misc: '🎁',
         'lost-found': data.lostFoundType === 'lost' ? '😢' : '😊' 
       }
       const emoji = categoryEmojis[category] || '📦'

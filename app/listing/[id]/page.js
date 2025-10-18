@@ -2,7 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Phone, Mail, MapPin, Clock, User, Share2 } from 'lucide-react'
+import { ChevronLeft, Phone, Mail, MapPin, Clock, User, Share2, Calendar } from 'lucide-react'
 import Link from 'next/link'
 
 export default function ListingDetail({ params }) {
@@ -165,13 +165,68 @@ export default function ListingDetail({ params }) {
     </div>
   </div>
 
-            {/* Price */}
-            <div className="bg-green-50 border-l-4 border-green-500 p-5 sm:p-6 mb-5 sm:mb-6 rounded-r-lg">
+            {/* Price or Lost/Found Info */}
+{listing.category === 'lost-found' ? (
+  <div className={`border-l-4 p-5 sm:p-6 mb-5 sm:mb-6 rounded-r-lg ${
+    listing.lostFoundType === 'lost'
+      ? 'bg-red-50 border-red-500'
+      : 'bg-green-50 border-green-500'
+  }`}>
+    <div className="flex items-center gap-2 mb-2">
+      <span className="text-3xl">
+        {listing.lostFoundType === 'lost' ? '😢' : '😊'}
+      </span>
+      <div>
+        <div className={`text-sm font-medium ${
+          listing.lostFoundType === 'lost' ? 'text-red-700' : 'text-green-700'
+        }`}>
+          {listing.lostFoundType === 'lost' ? 'LOST ITEM' : 'FOUND ITEM'}
+        </div>
+        <div className={`text-2xl sm:text-3xl font-bold ${
+          listing.lostFoundType === 'lost' ? 'text-red-700' : 'text-green-700'
+        }`}>
+          {listing.lostFoundType === 'lost' ? 'Help Me Find It!' : 'Claim Your Item'}
+        </div>
+      </div>
+    </div>
+    {listing.reward > 0 && (
+      <div className="mt-3 p-3 bg-orange-100 rounded-lg">
+        <div className="text-sm text-orange-700 mb-1">Reward Offered</div>
+        <div className="text-2xl font-bold text-orange-700">
+          🎁 ₹{listing.reward.toLocaleString()}
+        </div>
+      </div>
+    )}
+  </div>
+) : (
+  <div className="bg-green-50 border-l-4 border-green-500 p-5 sm:p-6 mb-5 sm:mb-6 rounded-r-lg">
     <div className="text-sm text-green-700 mb-2 font-medium">Price</div>
     <div className="text-4xl sm:text-5xl font-bold text-green-700">
       ₹{listing.price.toLocaleString()}
     </div>
   </div>
+)}
+
+{/* Last Seen Info for Lost & Found */}
+{listing.category === 'lost-found' && (
+  <div className="mb-5 sm:mb-6 px-1">
+    <h2 className="font-semibold text-gray-900 text-lg sm:text-xl mb-3">
+      Last Seen Information
+    </h2>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-gray-700">
+        <MapPin size={20} className="text-gray-500" />
+        <span className="font-medium">{listing.lastSeenLocation || listing.location}</span>
+      </div>
+      {listing.lastSeenDate && (
+        <div className="flex items-center gap-2 text-gray-700">
+          <Calendar size={20} className="text-gray-500" />
+          <span>{new Date(listing.lastSeenDate).toLocaleDateString()}</span>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
 
             {/* Description */}
