@@ -87,26 +87,31 @@ export async function POST(request) {
     }
 
     const data = await request.json()
-    const { title, description, price, category, images, location } = data
+    const { title, description, price, category, images, location, lostFoundType, reward, lastSeenLocation, lastSeenDate, contactMethod } = data
 
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
     const result = await db.collection('listings').insertOne({
-      title,
-      description,
-      price: Number(price),
-      category,
-      images: images || [],
-      seller: userInfo.userId || null,
-      sellerName: userInfo.name,
-      sellerPhone: userInfo.phone,
-      sellerEmail: userInfo.email,
-      location,
-      status: 'active',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    })
+        title,
+        description,
+        price: Number(price),
+        category,
+        images: images || [],
+        seller: userInfo.userId || null,
+        sellerName: userInfo.name,
+        sellerPhone: userInfo.phone,
+        sellerEmail: userInfo.email,
+        location,
+        lostFoundType: lostFoundType || null,           // ← ADD THIS
+        reward: reward ? Number(reward) : 0,             // ← ADD THIS
+        lastSeenLocation: lastSeenLocation || location,  // ← ADD THIS
+        lastSeenDate: lastSeenDate || null,              // ← ADD THIS
+        contactMethod: contactMethod || 'phone',         // ← ADD THIS
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date()
+        })
 
     // ✨ CREATE NOTIFICATIONS FOR ALL USERS ✨
     try {
@@ -122,22 +127,20 @@ export async function POST(request) {
         housing: '🏠',
         events: '🎉',
         misc: '🎁',
-        'lost-found': data.lostFoundType === 'lost' ? '😢' : '😊' 
+        'lost-found': lostFoundType === 'lost' ? '😢' : '😊' 
       }
       const emoji = categoryEmojis[category] || '📦'
 
       // Create notification for each user (except the poster)
       let notificationMessage;
 if (category === 'lost-found') {
-  // Fix the condition to properly check lostFoundType
-  const isLost = data.type === 'lost'; // Make sure this matches your form field name
-  if (isLost) {
-    notificationMessage = `😢 Lost: ${title}${data.reward ? ` - ₹${data.reward} reward` : ''}`
+  if (lostFoundType === 'lost') {  // ← CHANGE data.lostFoundType to lostFoundType
+    notificationMessage = `${emoji} Lost: ${title}${reward > 0 ? ` - ₹${reward} reward` : ''}`
   } else {
-    notificationMessage = `😊 Found: ${title} - Claim it now!`
+    notificationMessage = `${emoji} Found: ${title} - Claim it now!`
   }
 } else {
-  notificationMessage = `${categoryEmojis[category]} ${title} - ₹${price.toLocaleString()}`
+  notificationMessage = `${emoji} ${title} - ₹${price.toLocaleString()}`
 }
 
         const notifications = allUsers
