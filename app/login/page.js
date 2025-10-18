@@ -138,15 +138,12 @@ export default function LoginPage() {
         setSuccess(
         '✅ Account created! Check your NITC email for verification link. ' +
         'You must verify before logging in.')
-        
+
         if (typeof window !== 'undefined') {
           localStorage.setItem('token', data.token)
           localStorage.setItem('user', JSON.stringify(data.user))
         }
         
-        setTimeout(() => {
-          router.push('/')
-        }, 1500)
       } else {
         setError(data.error || 'Signup failed')
       }
