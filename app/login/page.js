@@ -10,6 +10,9 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const [showResend, setShowResend] = useState(false)
+  const [resending, setResending] = useState(false)   
+
   const [loginData, setLoginData] = useState({
     email: '',
     password: ''
@@ -31,6 +34,27 @@ export default function LoginPage() {
     setSignupData({ ...signupData, [e.target.name]: e.target.value })
   }
 
+  const handleResendVerification = async () => {
+    setResending(true)
+    try {
+        const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginData.email })
+        })
+
+        if (response.ok) {
+        alert('Verification email sent! Check your inbox.')
+        } else {
+        alert('Failed to send email')
+        }
+    } catch (error) {
+        alert('Something went wrong')
+    } finally {
+        setResending(false)
+    }
+    }
+
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -46,13 +70,23 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
+
+        if (!data.user.isVerified) {
+            setError('Please verify your email before logging in. Check your inbox.')
+            setShowResend(true)
+            setLoading(false)
+            return
+        }
+
+        setSuccess('Account created! Please check your NITC email to verify.')
+
         if (typeof window !== 'undefined') {
           localStorage.setItem('token', data.token)
           localStorage.setItem('user', JSON.stringify(data.user))
         }
         router.push('/')
       } else {
-        setError(data.error || 'Login failed')
+        setError(data.error || 'Signup failed')
       }
     } catch (err) {
       setError('Something went wrong')
@@ -101,7 +135,10 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess('Account created successfully! Redirecting...')
+        setSuccess(
+        '✅ Account created! Check your NITC email for verification link. ' +
+        'You must verify before logging in.')
+        
         if (typeof window !== 'undefined') {
           localStorage.setItem('token', data.token)
           localStorage.setItem('user', JSON.stringify(data.user))
@@ -173,6 +210,16 @@ export default function LoginPage() {
             <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
               {success}
             </div>
+          )}
+
+        {showResend && (
+            <button
+              onClick={handleResendVerification}
+              disabled={resending}
+              className="w-full mb-4 px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50"
+            >
+              {resending ? 'Sending...' : 'Resend Verification Email'}
+            </button>
           )}
 
           {/* Login Form */}

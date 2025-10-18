@@ -43,12 +43,16 @@ export async function POST(request) {
       email,
       phone,
       password: hashedPassword,
-      isVerified: true, // Auto-verify for now
+      isVerified: false, // Auto-verify for now
       createdAt: new Date(),
       listings: []
     })
 
     // After inserting user, send verification email
+    
+    // Generate token
+    const token = generateToken(result.insertedId.toString())
+
     try {
     await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/send-verification`, {
         method: 'POST',
@@ -60,10 +64,7 @@ export async function POST(request) {
     })
     } catch (emailError) {
     console.error('Failed to send verification email:', emailError)
-    // Continue anyway - user can still use the app
     }
-    // Generate token
-    const token = generateToken(result.insertedId.toString())
 
     return NextResponse.json({
       message: 'Account created successfully!',
@@ -72,7 +73,8 @@ export async function POST(request) {
         id: result.insertedId,
         name, 
         email, 
-        phone 
+        phone,
+        isVerified: false 
       }
     })
 

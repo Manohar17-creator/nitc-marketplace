@@ -124,11 +124,32 @@ export default function ProfilePage() {
     }
     }
 
-  const handleDeleteListing = (listingId) => {
-    if (confirm('Are you sure you want to delete this listing?')) {
-      // In real version, this would call DELETE API
-      setMyListings(myListings.filter(l => l._id !== listingId))
-      alert('Listing deleted successfully!')
+  const handleDeleteListing = async (listingId) => {
+    if (!confirm('Are you sure you want to delete this listing?')) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('token')
+      
+      const response = await fetch(`/api/listings/${listingId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        // Remove from local state
+        setMyListings(myListings.filter(l => l._id !== listingId))
+        alert('Listing deleted successfully!')
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to delete listing')
+      }
+    } catch (error) {
+      console.error('Delete error:', error)
+      alert('Failed to delete listing')
     }
   }
 
