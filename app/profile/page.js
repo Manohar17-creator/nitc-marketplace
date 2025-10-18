@@ -94,35 +94,6 @@ export default function ProfilePage() {
     setEditMode(false)
   }
 
-    const handleMarkAsSold = async (listingId) => {
-    if (!confirm('Mark this listing as sold?')) return
-
-    try {
-        const token = localStorage.getItem('token')
-        const response = await fetch(`/api/listings/${listingId}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-            status: 'sold',
-            title: myListings.find(l => l._id === listingId)?.title,
-            description: myListings.find(l => l._id === listingId)?.description,
-            price: myListings.find(l => l._id === listingId)?.price,
-            category: myListings.find(l => l._id === listingId)?.category,
-            location: myListings.find(l => l._id === listingId)?.location
-        })
-        })
-
-        if (response.ok) {
-        alert('Marked as sold! ✅')
-        loadMyListings() // Reload listings
-        }
-    } catch (error) {
-        alert('Failed to update listing')
-    }
-    }
 
   const handleDeleteListing = async (listingId) => {
     if (!confirm('Are you sure you want to delete this listing?')) {
