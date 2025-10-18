@@ -70,6 +70,16 @@ export default function HomePage() {
       </button>
     </div>
     {/* Search bar here */}
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+      <input
+        type="text"
+        placeholder="Search for anything..."
+        value={searchQuery}
+        onChange={handleSearch}
+        className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-300"
+      />
+    </div>
   </div>
 </div>
 
@@ -102,35 +112,41 @@ export default function HomePage() {
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto p-4">
-        {/* Categories - Better mobile scroll */}
-      <div className="mb-6">
-        <h2 className="font-semibold text-gray-900 mb-3 px-1">Categories</h2>
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide snap-x snap-mandatory">
-          {categories.map(cat => {
-            const Icon = cat.icon
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`flex-shrink-0 snap-start flex flex-col items-center gap-2 p-3 rounded-xl transition-all min-w-[80px] ${
-                  selectedCategory === cat.id 
-                    ? 'bg-blue-600 text-white shadow-lg scale-105' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm'
-                }`}
-              >
-                <div className={`p-2 rounded-full ${selectedCategory === cat.id ? 'bg-blue-500' : cat.color}`}>
-                  <Icon size={20} className="text-white" />
-                </div>
-                <span className="text-xs font-medium text-center leading-tight">{cat.name}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
+      <div className="max-w-6xl mx-auto p-4 pb-24">
+      {/* Categories */}
+<div className="mb-6 px-1">
+  <h2 className="font-semibold text-gray-900 mb-4 text-base sm:text-lg">
+    Categories
+  </h2>
+  <div className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 scrollbar-hide snap-x snap-mandatory">
+    {categories.map(cat => {
+      const Icon = cat.icon
+      return (
+        <button
+          key={cat.id}
+          onClick={() => setSelectedCategory(cat.id)}
+          className={`flex-shrink-0 snap-start flex flex-col items-center gap-2.5 p-4 rounded-xl transition-all min-w-[85px] ${
+            selectedCategory === cat.id 
+              ? 'bg-blue-600 text-white shadow-lg scale-105' 
+              : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm'
+          }`}
+        >
+          <div className={`p-2.5 rounded-full ${selectedCategory === cat.id ? 'bg-blue-500' : cat.color}`}>
+            <Icon size={22} className="text-white" />
+          </div>
+          <span className="text-xs sm:text-sm font-medium text-center leading-tight px-1">
+            {cat.name}
+          </span>
+        </button>
+      )
+    })}
+  </div>
+</div>
 
         {/* Listings */}
         <div className="mb-4 flex items-center justify-between">
+
+
           <h2 className="font-semibold text-gray-900">
             {selectedCategory === 'all' ? 'All Listings' : categories.find(c => c.id === selectedCategory)?.name}
             <span className="text-gray-500 font-normal ml-2">({listings.length})</span>
@@ -151,7 +167,7 @@ export default function HomePage() {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-4 mb-20">
+          <div className="grid gap-4 pb-8">
             {listings.map(listing => (
               <ListingCard key={listing._id} listing={listing} />
             ))}

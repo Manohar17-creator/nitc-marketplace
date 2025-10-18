@@ -235,7 +235,7 @@ export default function LoginPage() {
                     onChange={handleLoginChange}
                     required
                     placeholder="your.name@nitc.ac.in"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
                     suppressHydrationWarning
                   />
                 </div>
@@ -254,7 +254,7 @@ export default function LoginPage() {
                     onChange={handleLoginChange}
                     required
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
                   />
                 </div>
               </div>
@@ -283,7 +283,7 @@ export default function LoginPage() {
                     onChange={handleSignupChange}
                     required
                     placeholder="Rahul Kumar"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
                   />
                 </div>
               </div>
@@ -301,7 +301,7 @@ export default function LoginPage() {
                     onChange={handleSignupChange}
                     required
                     placeholder="your.name@nitc.ac.in"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
                     suppressHydrationWarning
                   />
                 </div>
@@ -321,7 +321,7 @@ export default function LoginPage() {
                     onChange={handleSignupChange}
                     required
                     placeholder="+91 98765 43210"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
                   />
                 </div>
               </div>
@@ -339,7 +339,7 @@ export default function LoginPage() {
                     onChange={handleSignupChange}
                     required
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
                   />
                 </div>
               </div>
@@ -357,7 +357,7 @@ export default function LoginPage() {
                     onChange={handleSignupChange}
                     required
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
                   />
                 </div>
               </div>

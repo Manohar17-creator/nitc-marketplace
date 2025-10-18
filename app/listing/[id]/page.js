@@ -147,39 +147,50 @@ export default function ListingDetail({ params }) {
           {/* Content */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             {/* Title & Time */}
-            <div className="p-4 sm:p-6">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{listing.title}</h1>
-              <div className="flex items-center gap-4 text-gray-600 text-sm">
-                <div className="flex items-center gap-1">
-                  <Clock size={16} />
-                  <span>{formatTime(listing.createdAt)}</span>
-                </div>
-                {listing.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin size={16} />
-                    <span>{listing.location}</span>
-                  </div>
-                )}
-              </div>
-            </div>
+            <div className="mb-4 sm:mb-5">
+    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
+      {listing.title}
+    </h1>
+    <div className="flex items-center gap-4 text-gray-600 text-sm">
+      <div className="flex items-center gap-1">
+        <Clock size={16} />
+        <span>{formatTime(listing.createdAt)}</span>
+      </div>
+      {listing.location && (
+        <div className="flex items-center gap-1">
+          <MapPin size={16} />
+          <span>{listing.location}</span>
+        </div>
+      )}
+    </div>
+  </div>
 
             {/* Price */}
-            <div className="bg-green-50 border-l-4 border-green-500 p-3 sm:p-4 mb-4 sm:mb-6 rounded-r-lg">
-        <div className="text-xs sm:text-sm text-green-700 mb-1">Price</div>
-        <div className="text-3xl sm:text-4xl font-bold text-green-700">
-          ₹{listing.price.toLocaleString()}
-        </div>
-      </div>
+            <div className="bg-green-50 border-l-4 border-green-500 p-5 sm:p-6 mb-5 sm:mb-6 rounded-r-lg">
+    <div className="text-sm text-green-700 mb-2 font-medium">Price</div>
+    <div className="text-4xl sm:text-5xl font-bold text-green-700">
+      ₹{listing.price.toLocaleString()}
+    </div>
+  </div>
 
 
             {/* Description */}
-            <div className="mb-4 sm:mb-6">
-        <h2 className="font-semibold text-gray-900 text-base sm:text-lg mb-2 sm:mb-3">Description</h2>
-        <p className="text-gray-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
+            <div className="mb-5 sm:mb-6 px-1">
+        <h2 className="font-semibold text-gray-900 text-lg sm:text-xl mb-3">Description</h2>
+        <p className="text-gray-700 text-base sm:text-lg leading-relaxed whitespace-pre-wrap">
           {listing.description}
         </p>
       </div>
     </div>
+
+    <div className="mb-5 sm:mb-6 pb-5 sm:pb-6 border-b px-1">
+    <h2 className="font-semibold text-gray-900 text-lg sm:text-xl mb-3">
+      Category
+    </h2>
+    <span className="inline-block px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+      {getCategoryEmoji(listing.category)} {listing.category.charAt(0).toUpperCase() + listing.category.slice(1)}
+    </span>
+  </div>
             {/* Seller Information */}
             <div>
               <h2 className="font-semibold text-gray-900 text-lg mb-4">Seller Information</h2>
@@ -193,6 +204,7 @@ export default function ListingDetail({ params }) {
                     <div className="font-semibold text-gray-900">{listing.sellerName}</div>
                   </div>
                 </div>
+
 
                 <a 
                   href={`tel:${listing.sellerPhone}`}

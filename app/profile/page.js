@@ -307,7 +307,7 @@ export default function ProfilePage() {
                             </span>
                           </div>
                           
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2 mt-3">
                             <Link
                                 href={`/listing/${listing._id}`}
                                 className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
@@ -324,19 +324,18 @@ export default function ProfilePage() {
                             {/* Add Mark Sold button here */}
                             {listing.status === 'active' && (
                               <button
-                                onClick={() => handleMarkAsSold(listing._id)}
-                                className="px-4 py-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors text-sm font-medium"
-                              >
-                                Mark Sold
-                              </button>
+                              onClick={() => handleMarkAsSold(listing._id)}
+                              className="flex-1 min-w-[80px] px-3 py-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-sm font-medium"
+                            >
+                              Mark Sold
+                            </button>
                             )}
 
                             <button
-                                onClick={() => handleDeleteListing(listing._id)}
-                                className="flex items-center gap-1 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+                              onClick={() => handleDeleteListing(listing._id)}
+                              className="flex-1 min-w-[70px] px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-sm font-medium"
                             >
-                                <Trash2 size={16} />
-                                <span>Delete</span>
+                              Delete
                             </button>
                             </div>
                         </div>
@@ -369,4 +368,75 @@ export default function ProfilePage() {
       </div>
     </div>
   )
-}
+}{myListings.map(listing => (
+  <div
+    key={listing._id}
+    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+  >
+    <div className="flex gap-4">
+      <div className="text-4xl flex-shrink-0">
+        {getCategoryEmoji(listing.category)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1 min-w-0 pr-2">
+            <h3 className="font-semibold text-gray-900 text-base sm:text-lg">
+              {listing.title}
+            </h3>
+            <p className="text-gray-600 text-sm line-clamp-2">
+              {listing.description}
+            </p>
+          </div>
+          <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+            listing.status === 'active'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-gray-100 text-gray-700'
+          }`}>
+            {listing.status}
+          </span>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
+          <div className="flex items-center gap-3">
+            <span className="text-xl font-bold text-green-600">
+              ₹{listing.price.toLocaleString()}
+            </span>
+            <span className="text-xs text-gray-500">
+              {formatDate(listing.createdAt)}
+            </span>
+          </div>
+          
+          {/* Buttons - Stay in one row, scroll if needed */}
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+            <Link
+              href={`/listing/${listing._id}`}
+              className="flex-shrink-0 px-3 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-sm font-medium"
+            >
+              View
+            </Link>
+            <Link
+              href={`/edit/${listing._id}`}
+              className="flex-shrink-0 px-3 py-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-sm font-medium"
+            >
+              Edit
+            </Link>
+            {listing.status === 'active' && (
+              <button
+                onClick={() => handleMarkAsSold(listing._id)}
+                className="flex-shrink-0 px-3 py-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+              >
+                Mark Sold
+              </button>
+            )}
+            <button
+              onClick={() => handleDeleteListing(listing._id)}
+              className="flex-shrink-0 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-sm font-medium"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+))}

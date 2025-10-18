@@ -202,7 +202,7 @@ export default function PostListing() {
         onChange={handleChange}
         required
         placeholder="e.g., iPhone 12 - 128GB"
-        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent  placeholder-gray-400"
       />
     </div>
 
@@ -218,7 +218,7 @@ export default function PostListing() {
         required
         rows={4}
         placeholder="Describe your item..."
-        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400  resize-none"
       />
     </div>
 
@@ -236,7 +236,7 @@ export default function PostListing() {
           required
           min="0"
           placeholder="1000"
-          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent  placeholder-gray-400"
         />
       </div>
 
@@ -269,7 +269,7 @@ export default function PostListing() {
               value={formData.location}
               onChange={handleChange}
               placeholder="e.g., Mega Hostel, Near Main Gate"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent  placeholder-gray-400"
             />
           </div>
 

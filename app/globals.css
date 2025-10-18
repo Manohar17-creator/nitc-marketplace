@@ -29,9 +29,31 @@ body {
 @tailwind components;
 @tailwind utilities;
 
-/* Mobile touch optimizations */
+@layer base {
+  /* Make all text more visible */
+  body {
+    @apply text-gray-900;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Ensure good contrast */
+  input, textarea, select {
+    @apply text-gray-900;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-gray-400;
+  }
+
+  /* Better button text visibility */
+  button {
+    @apply font-medium;
+  }
+}
+
 @layer utilities {
-  /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -40,7 +62,6 @@ body {
     display: none;
   }
 
-  /* Smooth scroll snap for mobile */
   .snap-x {
     scroll-snap-type: x mandatory;
   }
@@ -48,24 +69,15 @@ body {
     scroll-snap-align: start;
   }
 
-  /* Touch-friendly tap highlights */
   * {
     -webkit-tap-highlight-color: rgba(37, 99, 235, 0.1);
   }
 
-  /* Prevent text size adjustment on iOS */
   html {
     -webkit-text-size-adjust: 100%;
   }
-
-  /* Better touch target sizes */
-  button, a {
-    min-height: 44px;
-    min-width: 44px;
-  }
 }
 
-/* Line clamp utilities */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
