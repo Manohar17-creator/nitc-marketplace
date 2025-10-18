@@ -19,6 +19,7 @@ export default function EditListing({ params }) {
   const [error, setError] = useState('')
 
   const categories = [
+    { id: 'lost-found', name: 'Lost & Found' },
     { id: 'books', name: 'Books & Notes' },
     { id: 'electronics', name: 'Electronics' },
     { id: 'tickets', name: 'Travel Tickets' },

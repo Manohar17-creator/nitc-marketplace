@@ -122,22 +122,36 @@ export async function POST(request) {
         housing: '🏠',
         events: '🎉',
         misc: '🎁'
+        'lost-found': data.lostFoundType === 'lost' ? '😢' : '😊' 
       }
       const emoji = categoryEmojis[category] || '📦'
 
       // Create notification for each user (except the poster)
-      const notifications = allUsers
+      let notificationMessage
+if (category === 'lost-found') {
+  if (data.lostFoundType === 'lost') {
+    notificationMessage = `${emoji} Lost: ${title}${data.reward > 0 ? ` - ₹${data.reward} reward` : ''}`
+  } else {
+    notificationMessage = `${emoji} Found: ${title} - Claim it now!`
+  }
+} else {
+  notificationMessage = `${emoji} ${title} - ₹${price.toLocaleString()}`
+}
+
+        const notifications = allUsers
         .filter(user => user._id.toString() !== userInfo.userId?.toString())
         .map(user => ({
-          userId: user._id,
-          type: 'new_listing',
-          title: 'New Listing Posted',
-          message: `${emoji} ${title} - ₹${price.toLocaleString()}`,
-          listingId: result.insertedId,
-          link: `/listing/${result.insertedId}`,
-          icon: emoji,
-          read: false,
-          createdAt: new Date()
+            userId: user._id,
+            type: category === 'lost-found' ? 'lost_found' : 'new_listing',
+            title: category === 'lost-found' 
+            ? (data.lostFoundType === 'lost' ? 'Item Lost' : 'Item Found')
+            : 'New Listing Posted',
+            message: notificationMessage,
+            listingId: result.insertedId,
+            link: `/listing/${result.insertedId}`,
+            icon: emoji,
+            read: false,
+            createdAt: new Date()
         }))
 
       if (notifications.length > 0) {

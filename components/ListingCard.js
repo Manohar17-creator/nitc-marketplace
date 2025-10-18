@@ -33,7 +33,7 @@ export default function ListingCard({ listing }) {
     <Link href={`/listing/${listing._id}`}>
       <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer p-3 sm:p-4 border border-gray-200 active:scale-[0.98]">
         <div className="flex gap-3 sm:gap-4">
-          {/* Image or Emoji - Smaller on mobile */}
+          {/* Image or Emoji */}
           <div className="flex-shrink-0">
             {listing.images && listing.images.length > 0 ? (
               <img 
@@ -48,8 +48,19 @@ export default function ListingCard({ listing }) {
             )}
           </div>
 
-          {/* Content - Better mobile spacing */}
+          {/* Content */}
           <div className="flex-1 min-w-0">
+            {/* Lost/Found Badge */}
+            {listing.category === 'lost-found' && (
+              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold mb-1 ${
+                listing.lostFoundType === 'lost'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-green-100 text-green-700'
+              }`}>
+                {listing.lostFoundType === 'lost' ? '😢 LOST' : '😊 FOUND'}
+              </span>
+            )}
+
             <h3 className="font-semibold text-gray-900 text-base sm:text-lg mb-1 truncate">
               {listing.title}
             </h3>
@@ -57,11 +68,27 @@ export default function ListingCard({ listing }) {
               {listing.description}
             </p>
             
-            {/* Footer - Stack on very small screens */}
+            {/* Footer */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-              <span className="text-lg sm:text-xl font-bold text-green-600">
-                ₹{listing.price.toLocaleString()}
-              </span>
+              {listing.category === 'lost-found' ? (
+                <div>
+                  {listing.reward > 0 && (
+                    <span className="text-base sm:text-lg font-bold text-orange-600">
+                      🎁 ₹{listing.reward.toLocaleString()} Reward
+                    </span>
+                  )}
+                  {listing.reward === 0 && (
+                    <span className="text-sm text-gray-600 font-medium">
+                      {listing.lostFoundType === 'lost' ? 'Help me find it!' : 'Claim your item'}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-lg sm:text-xl font-bold text-green-600">
+                  ₹{listing.price.toLocaleString()}
+                </span>
+              )}
+              
               <div className="flex items-center gap-2 sm:gap-3 text-xs text-gray-500">
                 <div className="flex items-center gap-1">
                   <Clock size={12} />

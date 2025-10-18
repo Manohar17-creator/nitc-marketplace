@@ -34,7 +34,8 @@ export default function PostListing() {
     { id: 'rides', name: 'Ride Sharing' },
     { id: 'housing', name: 'PG/Rooms' },
     { id: 'events', name: 'Event Tickets' },
-    { id: 'misc', name: 'Miscellaneous' }
+    { id: 'misc', name: 'Miscellaneous' },
+    { id: 'lost-found', name: 'Lost & Found'}
   ]
 
   const handleChange = (e) => {
