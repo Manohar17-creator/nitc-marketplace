@@ -48,6 +48,20 @@ export async function POST(request) {
       listings: []
     })
 
+    // After inserting user, send verification email
+    try {
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/send-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+        email,
+        userId: result.insertedId.toString()
+        })
+    })
+    } catch (emailError) {
+    console.error('Failed to send verification email:', emailError)
+    // Continue anyway - user can still use the app
+    }
     // Generate token
     const token = generateToken(result.insertedId.toString())
 

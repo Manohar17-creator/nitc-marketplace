@@ -9,11 +9,18 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const search = searchParams.get('search')
+    const userEmail = searchParams.get('userEmail') // ← ADD THIS
 
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
     let query = { status: 'active' }
+    
+    // Filter by user email if provided ← ADD THIS
+    if (userEmail) {
+      query.sellerEmail = userEmail
+      delete query.status // Show all statuses for user's own listings
+    }
     
     if (category && category !== 'all') {
       query.category = category

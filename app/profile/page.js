@@ -39,32 +39,33 @@ export default function ProfilePage() {
     }
   }, [router])
 
-  const loadMyListings = () => {
-    // For fake data version, show sample listings
-    // In real version, this would fetch from API with user filter
-    const fakeUserListings = [
-      {
-        _id: '1',
-        title: 'Data Structures Textbook',
-        description: 'Cormen book, excellent condition',
-        price: 450,
-        category: 'books',
-        status: 'active',
-        createdAt: new Date('2024-10-17T10:00:00')
-      },
-      {
-        _id: '2',
-        title: 'MacBook Air M1',
-        description: '1 year old, warranty remaining',
-        price: 65000,
-        category: 'electronics',
-        status: 'active',
-        createdAt: new Date('2024-10-16T15:00:00')
-      }
-    ]
-    setMyListings(fakeUserListings)
-    setLoading(false)
-  }
+  const loadMyListings = async () => {
+    try {
+        const token = localStorage.getItem('token')
+        const user = JSON.parse(localStorage.getItem('user') || '{}')
+        
+        if (!token || !user.email) {
+        setLoading(false)
+        return
+        }
+
+        // Fetch listings by user email (since we're storing sellerEmail)
+        const response = await fetch(`/api/listings?userEmail=${user.email}`)
+        const data = await response.json()
+        
+        if (response.ok) {
+        // Filter listings by current user's email
+        const userListings = data.listings.filter(
+            listing => listing.sellerEmail === user.email
+        )
+        setMyListings(userListings)
+        }
+    } catch (error) {
+        console.error('Error loading listings:', error)
+    } finally {
+        setLoading(false)
+    }
+    }
 
   const handleEditProfile = () => {
     setEditMode(true)
@@ -92,6 +93,36 @@ export default function ProfilePage() {
     })
     setEditMode(false)
   }
+
+    const handleMarkAsSold = async (listingId) => {
+    if (!confirm('Mark this listing as sold?')) return
+
+    try {
+        const token = localStorage.getItem('token')
+        const response = await fetch(`/api/listings/${listingId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            status: 'sold',
+            title: myListings.find(l => l._id === listingId)?.title,
+            description: myListings.find(l => l._id === listingId)?.description,
+            price: myListings.find(l => l._id === listingId)?.price,
+            category: myListings.find(l => l._id === listingId)?.category,
+            location: myListings.find(l => l._id === listingId)?.location
+        })
+        })
+
+        if (response.ok) {
+        alert('Marked as sold! ✅')
+        loadMyListings() // Reload listings
+        }
+    } catch (error) {
+        alert('Failed to update listing')
+    }
+    }
 
   const handleDeleteListing = (listingId) => {
     if (confirm('Are you sure you want to delete this listing?')) {
@@ -331,19 +362,36 @@ export default function ProfilePage() {
                           
                           <div className="flex gap-2">
                             <Link
-                              href={`/listing/${listing._id}`}
-                              className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
+                                href={`/listing/${listing._id}`}
+                                className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
                             >
-                              View
+                                View
                             </Link>
-                            <button
-                              onClick={() => handleDeleteListing(listing._id)}
-                              className="flex items-center gap-1 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+                            <Link
+                                href={`/edit/${listing._id}`}
+                                className="px-4 py-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors text-sm font-medium"
                             >
-                              <Trash2 size={16} />
-                              <span>Delete</span>
+                                Edit
+                            </Link>
+
+                            {/* Add Mark Sold button here */}
+                            {listing.status === 'active' && (
+                              <button
+                                onClick={() => handleMarkAsSold(listing._id)}
+                                className="px-4 py-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors text-sm font-medium"
+                              >
+                                Mark Sold
+                              </button>
+                            )}
+
+                            <button
+                                onClick={() => handleDeleteListing(listing._id)}
+                                className="flex items-center gap-1 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+                            >
+                                <Trash2 size={16} />
+                                <span>Delete</span>
                             </button>
-                          </div>
+                            </div>
                         </div>
                       </div>
                     </div>
