@@ -11,6 +11,7 @@ export default function HomePage() {
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
   const [showMenu, setShowMenu] = useState(false)
+  const [isSearchVisible, setIsSearchVisible] = useState(false)
 
   const categories = [
     { id: 'all', name: 'All', icon: Home, color: 'bg-blue-500' },
@@ -52,38 +53,69 @@ export default function HomePage() {
     setSearchQuery(e.target.value)
   }
 
+  const toggleSearch = () => {
+    setIsSearchVisible(!isSearchVisible)
+    if (!isSearchVisible) {
+      // Focus the search input when showing
+      setTimeout(() => {
+        document.getElementById('search-input')?.focus()
+      }, 100)
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen min-h-[-webkit-fill-available] bg-gray-50">
       {/* Header - Better mobile spacing */}
-<div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg">
+<div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg">
   <div className="max-w-6xl mx-auto">
-    <div className="flex items-center justify-between mb-3 sm:mb-4">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold">NITC Marketplace</h1>
-        <p className="text-blue-100 text-xs sm:text-sm">Buy, Sell & Share</p>
-      </div>
-      <button 
-        onClick={() => setShowMenu(!showMenu)}
-        className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
-      >
-        {showMenu ? <X size={22} /> : <Menu size={22} />}
-      </button>
-    </div>
-    {/* Search bar here */}
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-      <input
-        type="text"
-        placeholder="Search for anything..."
-        value={searchQuery}
-        onChange={handleSearch}
-        className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base text-white-900 placeholder-white-500 focus:outline-none focus:ring-2 focus:ring-blue-300"
-      />
+    <div className="flex items-center justify-between gap-4 h-[40px] sm:h-[48px]">
+      {!isSearchVisible ? (
+        <>
+          <div className="flex-shrink-0">
+            <h1 className="text-xl sm:text-2xl font-bold">NITC Marketplace</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleSearch}
+              className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
+            >
+              <Search size={22} />
+            </button>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
+            >
+              {showMenu ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="flex items-center gap-2 w-full">
+          <button
+            onClick={toggleSearch}
+            className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
+          >
+            <X size={22} />
+          </button>
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              id="search-input"
+              type="text"
+              placeholder="Search for anything..."
+              value={searchQuery}
+              onChange={handleSearch}
+              className="w-full pl-10 pr-4 py-2 rounded-lg text-sm bg-blue-500/50 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
+          </div>
+        </div>
+      )}
     </div>
   </div>
 </div>
 
       {/* Menu Dropdown */}
+      <div className="pt-24 sm:pt-20">
       {showMenu && (
         <div className="bg-white border-b shadow-lg p-4">
           <div className="max-w-6xl mx-auto space-y-2">
@@ -179,6 +211,7 @@ export default function HomePage() {
             ))}
           </div>
         )}
+      </div>
       </div>
 
       {/* Floating Action Button - Better mobile positioning */}

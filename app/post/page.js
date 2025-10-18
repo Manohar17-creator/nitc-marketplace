@@ -170,15 +170,18 @@ export default function PostListing() {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 sticky top-0 z-10 shadow-lg">
         <div className="max-w-2xl mx-auto">
-          <button 
-            onClick={() => router.back()}
-            className="flex items-center gap-2 mb-4 hover:opacity-80"
-          >
-            <ArrowLeft size={24} />
-            <span>Back</span>
-          </button>
-          <h1 className="text-2xl font-bold">Post New Listing</h1>
-          <p className="text-blue-100 text-sm">Fill in the details below</p>
+          <div className="flex items-center gap-3">
+            <button 
+                onClick={() => router.back()}
+                className="p-2 -ml-2 hover:bg-blue-700 rounded-lg transition-colors"
+            >
+                <ArrowLeft size={22} />
+            </button>
+            <div>
+                <h1 className="text-2xl font-bold">Post New Listing</h1>
+                <p className="text-blue-100 text-sm">Fill in the details below</p>
+            </div>
+            </div>
         </div>
       </div>
 
