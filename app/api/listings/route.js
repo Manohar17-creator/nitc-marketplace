@@ -1,105 +1,115 @@
 import { NextResponse } from 'next/server'
+import clientPromise from '@/lib/mongodb'
+import { ObjectId } from 'mongodb'
+import { verifyToken } from '@/lib/auth'
 
-// Temporary fake data - no MongoDB needed
-const sampleListings = [
-  {
-    _id: '1',
-    title: 'Data Structures & Algorithms Textbook',
-    description: 'Cormen book in excellent condition. Used for one semester only.',
-    price: 450,
-    category: 'books',
-    sellerName: 'Rahul Kumar',
-    sellerPhone: '+91 98765 43210',
-    sellerEmail: 'rahul.b220xxx@nitc.ac.in',
-    location: 'Mega Hostel',
-    status: 'active',
-    createdAt: new Date('2024-10-17T10:00:00')
-  },
-  {
-    _id: '2',
-    title: 'iPhone 12 - 128GB',
-    description: 'Mint condition, with box and all accessories. Battery health 89%.',
-    price: 32000,
-    category: 'electronics',
-    sellerName: 'Priya Sharma',
-    sellerPhone: '+91 87654 32109',
-    sellerEmail: 'priya.b220xxx@nitc.ac.in',
-    location: 'Ladies Hostel',
-    status: 'active',
-    createdAt: new Date('2024-10-17T08:00:00')
-  },
-  {
-    _id: '3',
-    title: 'Train Ticket: Calicut to Bangalore',
-    description: 'Tomorrow 6:30 AM, AC 3-Tier confirmed. Urgent sale!',
-    price: 800,
-    category: 'tickets',
-    sellerName: 'Arjun Menon',
-    sellerPhone: '+91 76543 21098',
-    sellerEmail: 'arjun.b220xxx@nitc.ac.in',
-    location: 'Quilon Hostel',
-    status: 'active',
-    createdAt: new Date('2024-10-17T11:00:00')
-  },
-  {
-    _id: '4',
-    title: 'MacBook Air M1 - 8GB/256GB',
-    description: '1 year old, under warranty. Perfect for coding.',
-    price: 65000,
-    category: 'electronics',
-    sellerName: 'Sneha Reddy',
-    sellerPhone: '+91 54321 09876',
-    sellerEmail: 'sneha.b220xxx@nitc.ac.in',
-    location: 'PG Near Campus',
-    status: 'active',
-    createdAt: new Date('2024-10-17T09:00:00')
-  }
-]
-
+// GET all listings
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const search = searchParams.get('search')
 
-    let filtered = [...sampleListings]
+    const client = await clientPromise
+    const db = client.db('nitc-marketplace')
 
-    // Filter by category
+    let query = { status: 'active' }
+    
     if (category && category !== 'all') {
-      filtered = filtered.filter(l => l.category === category)
+      query.category = category
     }
-
-    // Filter by search
+    
     if (search) {
-      const searchLower = search.toLowerCase()
-      filtered = filtered.filter(l => 
-        l.title.toLowerCase().includes(searchLower) ||
-        l.description.toLowerCase().includes(searchLower)
-      )
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ]
     }
 
-    return NextResponse.json({ listings: filtered })
+    const listings = await db
+      .collection('listings')
+      .find(query)
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .toArray()
+
+    return NextResponse.json({ listings })
+
   } catch (error) {
     console.error('Get listings error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch listings' },
+      { error: 'Failed to fetch listings', details: error.message },
       { status: 500 }
     )
   }
 }
 
+// POST new listing
 export async function POST(request) {
   try {
-    const data = await request.json()
-    console.log('New listing posted:', data)
+    const token = request.headers.get('authorization')?.split(' ')[1]
     
-    return NextResponse.json({
-      message: 'Listing created successfully (fake data)',
-      listingId: Date.now().toString()
+    // Get user info from token or localStorage
+    let userInfo = { 
+      name: 'Anonymous User',
+      phone: '+91 98765 43210',
+      email: 'user@nitc.ac.in'
+    }
+
+    if (token && token !== 'null' && token !== 'undefined') {
+      try {
+        const decoded = verifyToken(token)
+        if (decoded) {
+          const client = await clientPromise
+          const db = client.db('nitc-marketplace')
+          const user = await db.collection('users').findOne({
+            _id: new ObjectId(decoded.userId)
+          })
+          if (user) {
+            userInfo = {
+              name: user.name,
+              phone: user.phone,
+              email: user.email,
+              userId: user._id
+            }
+          }
+        }
+      } catch (err) {
+        console.log('Token verification failed, using anonymous')
+      }
+    }
+
+    const data = await request.json()
+    const { title, description, price, category, images, location } = data
+
+    const client = await clientPromise
+    const db = client.db('nitc-marketplace')
+
+    const result = await db.collection('listings').insertOne({
+      title,
+      description,
+      price: Number(price),
+      category,
+      images: images || [],
+      seller: userInfo.userId || null,
+      sellerName: userInfo.name,
+      sellerPhone: userInfo.phone,
+      sellerEmail: userInfo.email,
+      location,
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date()
     })
+
+    return NextResponse.json({
+      message: 'Listing created successfully',
+      listingId: result.insertedId
+    })
+
   } catch (error) {
+    console.error('Create listing error:', error)
     return NextResponse.json(
-      { error: 'Failed to create listing' },
+      { error: 'Failed to create listing', details: error.message },
       { status: 500 }
     )
   }

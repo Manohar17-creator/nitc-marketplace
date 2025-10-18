@@ -1,35 +1,44 @@
 import { NextResponse } from 'next/server'
+import clientPromise from '@/lib/mongodb'
+import { verifyPassword, generateToken } from '@/lib/auth'
 
-// Fake login (no database for now)
 export async function POST(request) {
   try {
     const { email, password } = await request.json()
 
-    // For testing, accept any @nitc.ac.in email with any password
-    if (!email.endsWith('@nitc.ac.in')) {
+    const client = await clientPromise
+    const db = client.db('nitc-marketplace')
+
+    // Find user
+    const user = await db.collection('users').findOne({ email })
+    if (!user) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       )
     }
 
-    if (password.length < 6) {
+    // Verify password
+    const isValid = await verifyPassword(password, user.password)
+    if (!isValid) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       )
     }
 
-    // Return fake success
-    const fakeToken = 'fake-jwt-token-' + Date.now()
+    // Generate token
+    const token = generateToken(user._id.toString())
 
     return NextResponse.json({
       message: 'Login successful',
-      token: fakeToken,
+      token,
       user: {
-        name: 'Test User',
-        email: email,
-        phone: '+91 98765 43210'
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        isVerified: user.isVerified
       }
     })
 
