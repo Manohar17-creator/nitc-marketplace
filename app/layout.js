@@ -22,6 +22,20 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#2563eb" />
+        <meta 
+          name="viewport" 
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" 
+        />
+        <meta 
+          name="theme-color" 
+          content="rgb(249 250 251)"
+          media="(prefers-color-scheme: light)"
+        />
+        <meta 
+          name="theme-color" 
+          content="rgb(249 250 251)"
+          media="(prefers-color-scheme: dark)"
+        />
       </head>
       <body className="antialiased h-full bg-gray-50">{children}</body>
     </html>

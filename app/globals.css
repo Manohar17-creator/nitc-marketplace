@@ -117,3 +117,68 @@ body {
   min-height: 100vh;
   min-height: -webkit-fill-available;
 }
+
+/* Add this to your global CSS */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+select,
+textarea {
+  font-size: 16px !important; /* Prevents zoom on iOS */
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+
+/* Optional: If you want to prevent all zooming */
+html {
+  touch-action: manipulation;
+}
+
+/* Update the viewport height fixes */
+@layer base {
+  html, body {
+    @apply h-full;
+    @apply bg-gray-50;
+    height: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body {
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+    position: relative;
+    width: 100%;
+  }
+}
+
+/* Update iOS specific fixes */
+@supports (-webkit-touch-callout: none) {
+  html {
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+  }
+
+  #__next, 
+  [data-nextjs-scroll-focus-boundary] {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Add overscroll behavior to prevent bounce */
+html {
+  overscroll-behavior-y: none;
+  background-color: rgb(249 250 251); /* bg-gray-50 */
+}
+
+body {
+  overscroll-behavior-y: none;
+  background-color: rgb(249 250 251); /* bg-gray-50 */
+}
