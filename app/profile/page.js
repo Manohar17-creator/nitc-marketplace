@@ -79,6 +79,37 @@ export default function ProfilePage() {
   
   if (!confirm(confirmMessage)) return
 
+  try {
+    const token = localStorage.getItem('token')
+    
+    const response = await fetch(`/api/listings/${listingId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        status: 'reunited',
+        title: listing.title,
+        description: listing.description,
+        price: listing.price,
+        category: listing.category,
+        location: listing.location
+      })
+    })
+
+    if (response.ok) {
+      const successMessage = listing.lostFoundType === 'lost'
+        ? 'Great! Glad you found it! 🎉'
+        : 'Item successfully returned to owner! 🎉'
+      alert(successMessage)
+      loadMyListings()
+    }
+  } catch (error) {
+    alert('Failed to update')
+  }
+}
+
   const handleSaveProfile = () => {
     // Save updated profile
     if (typeof window !== 'undefined') {
