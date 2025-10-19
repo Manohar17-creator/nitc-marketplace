@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, ChevronRight, Search, Check } from 'lucide-react'
+import { Users, ChevronRight, Search } from 'lucide-react'
 import Link from 'next/link'
 
 export default function CommunitiesPage() {
@@ -44,6 +44,7 @@ export default function CommunitiesPage() {
       
       if (response.ok) {
         const data = await response.json()
+        console.log('My communities:', data.communityIds) // Debug
         setMyCommunitiesIds(data.communityIds)
       }
     } catch (error) {
@@ -74,9 +75,13 @@ export default function CommunitiesPage() {
           setMyCommunitiesIds([...myCommunitiesIds, communityId])
         }
         fetchCommunities() // Refresh counts
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to join/leave')
       }
     } catch (error) {
       console.error('Failed to join/leave:', error)
+      alert('Something went wrong')
     }
   }
 
@@ -133,7 +138,8 @@ export default function CommunitiesPage() {
       <div className="max-w-4xl mx-auto p-4 flex-1 w-full pb-8">
         <div className="space-y-3">
           {filteredCommunities.map(community => {
-            const isJoined = myCommunitiesIds.includes(community._id)
+            const communityIdStr = community._id.toString()
+            const isJoined = myCommunitiesIds.includes(communityIdStr)
             
             return (
               <div
@@ -166,14 +172,14 @@ export default function CommunitiesPage() {
                     {isJoined ? (
                       <>
                         <Link
-                          href={`/communities/${community._id}`}
+                          href={`/communities/${communityIdStr}`}
                           className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1 whitespace-nowrap"
                         >
                           Open
                           <ChevronRight size={16} />
                         </Link>
                         <button
-                          onClick={() => handleJoinLeave(community._id, true)}
+                          onClick={() => handleJoinLeave(communityIdStr, true)}
                           className="px-4 py-2 text-red-600 border border-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
                         >
                           Leave
@@ -181,7 +187,7 @@ export default function CommunitiesPage() {
                       </>
                     ) : (
                       <button
-                        onClick={() => handleJoinLeave(community._id, false)}
+                        onClick={() => handleJoinLeave(communityIdStr, false)}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
                       >
                         Join

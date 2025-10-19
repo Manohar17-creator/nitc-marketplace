@@ -2,10 +2,17 @@ import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
-// GET - Single community details
-export async function GET(request, context) {
+export async function GET(request, { params }) {
   try {
-    const { id } = await context.params
+    const { id } = params
+    
+    // Add validation for ObjectId format
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { error: 'Invalid community ID format' },
+        { status: 400 }
+      )
+    }
 
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
