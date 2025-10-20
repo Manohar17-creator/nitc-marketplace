@@ -243,7 +243,7 @@ export default function HomePage() {
         )}
       </div>
       </div>
-
+      {/* Justify bottom padding for floating button */}
       {/* Floating Action Button - Better mobile positioning */}
       <Link href="/post">
         <button className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 z-50">
