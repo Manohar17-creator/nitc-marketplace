@@ -10,22 +10,23 @@ export default function CommunitiesPage() {
   const [myCommunitiesIds, setMyCommunitiesIds] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [joiningId, setJoiningId] = useState(null)
 
   useEffect(() => {
     fetchCommunities()
     fetchMyCommunities()
 
     const handleVisibilityChange = () => {
-    if (!document.hidden) {
-      fetchMyCommunities()
+      if (!document.hidden) {
+        fetchMyCommunities()
+      }
     }
-  }
 
-  document.addEventListener('visibilitychange', handleVisibilityChange)
-  
-  return () => {
-    document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   const fetchCommunities = async () => {
@@ -56,42 +57,53 @@ export default function CommunitiesPage() {
       
       if (response.ok) {
         const data = await response.json()
-        console.log('My communities:', data.communityIds) // Debug
-        setMyCommunitiesIds(data.communityIds)
+        console.log('My communities:', data.communityIds)
+        // Ensure all IDs are strings
+        setMyCommunitiesIds(data.communityIds.map(id => String(id)))
       }
     } catch (error) {
       console.error('Failed to fetch my communities:', error)
     }
   }
 
-
   const handleJoinCommunity = async (communityId) => {
-  try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      return
-    }
-
-    const response = await fetch(`/api/communities/${communityId}/join`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        router.push('/login')
+        return
       }
-    })
 
-    if (response.ok) {
-      // Immediately go inside the community after joining
-      router.push(`/communities/${communityId}`)
-    } else {
-      const data = await response.json()
-      alert(data.error || 'Failed to join')
+      setJoiningId(communityId)
+
+      const response = await fetch(`/api/communities/${communityId}/join`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        // Update the state immediately to reflect the join
+        setMyCommunitiesIds(prev => [...prev, String(communityId)])
+        
+        // Navigate to the community
+        router.push(`/communities/${communityId}`)
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to join community')
+      }
+    } catch (error) {
+      console.error('Failed to join:', error)
+      alert('Something went wrong')
+    } finally {
+      setJoiningId(null)
     }
-  } catch (error) {
-    console.error('Failed to join:', error)
-    alert('Something went wrong')
   }
-}
+
+  const handleViewCommunity = (communityId) => {
+    router.push(`/communities/${communityId}`)
+  }
 
   const filteredCommunities = communities.filter(c =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -146,8 +158,9 @@ export default function CommunitiesPage() {
       <div className="max-w-4xl mx-auto p-4 flex-1 w-full pb-8">
         <div className="space-y-3">
           {filteredCommunities.map(community => {
-            const communityIdStr = community._id.toString()
+            const communityIdStr = String(community._id)
             const isJoined = myCommunitiesIds.includes(communityIdStr)
+            const isJoining = joiningId === communityIdStr
             
             return (
               <div
@@ -178,22 +191,23 @@ export default function CommunitiesPage() {
 
                   <div className="flex flex-col gap-2">
                     {isJoined ? (
-                        <Link
-                        href={`/communities/${communityIdStr}`}
+                      <button
+                        onClick={() => handleViewCommunity(communityIdStr)}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1 whitespace-nowrap justify-center"
-                        >
-                        Open
+                      >
+                        View
                         <ChevronRight size={16} />
-                        </Link>
+                      </button>
                     ) : (
-                        <button
+                      <button
                         onClick={() => handleJoinCommunity(communityIdStr)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
-                        >
-                        Join
-                        </button>
+                        disabled={isJoining}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isJoining ? 'Joining...' : 'Join'}
+                      </button>
                     )}
-                    </div>
+                  </div>
                 </div>
               </div>
             )
