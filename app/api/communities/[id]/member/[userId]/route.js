@@ -5,6 +5,8 @@ import { ObjectId } from 'mongodb'
 export async function GET(request, context) {
   try {
     const { id, userId } = await context.params
+    const { searchParams } = new URL(request.url)
+    const type = searchParams.get('type') || 'feed'
 
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
@@ -21,13 +23,23 @@ export async function GET(request, context) {
       )
     }
 
-    // Get member's posts in this community
+    // Get member's posts based on type
+    let query = {
+      communityId: new ObjectId(id),
+      authorId: new ObjectId(userId)
+    }
+
+    if (type === 'feed') {
+      // Feed includes feed and job posts, NOT portfolio
+      query.type = { $in: ['feed', 'job'] }
+    } else if (type === 'portfolio') {
+      // Only portfolio posts
+      query.type = 'portfolio'
+    }
+
     const posts = await db
       .collection('community_posts')
-      .find({
-        communityId: new ObjectId(id),
-        authorId: new ObjectId(userId)
-      })
+      .find(query)
       .sort({ createdAt: -1 })
       .toArray()
 

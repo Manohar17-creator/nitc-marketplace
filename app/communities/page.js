@@ -64,38 +64,34 @@ export default function CommunitiesPage() {
     }
   }
 
-  const handleJoinLeave = async (communityId, isJoined) => {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        router.push('/login')
-        return
-      }
 
-      const method = isJoined ? 'DELETE' : 'POST'
-      const response = await fetch(`/api/communities/${communityId}/join`, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (response.ok) {
-        if (isJoined) {
-          setMyCommunitiesIds(myCommunitiesIds.filter(id => id !== communityId))
-        } else {
-          setMyCommunitiesIds([...myCommunitiesIds, communityId])
-        }
-        fetchCommunities() // Refresh counts
-      } else {
-        const data = await response.json()
-        alert(data.error || 'Failed to join/leave')
-      }
-    } catch (error) {
-      console.error('Failed to join/leave:', error)
-      alert('Something went wrong')
+  const handleJoinCommunity = async (communityId) => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+      return
     }
+
+    const response = await fetch(`/api/communities/${communityId}/join`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    if (response.ok) {
+      // Immediately go inside the community after joining
+      router.push(`/communities/${communityId}`)
+    } else {
+      const data = await response.json()
+      alert(data.error || 'Failed to join')
+    }
+  } catch (error) {
+    console.error('Failed to join:', error)
+    alert('Something went wrong')
   }
+}
 
   const filteredCommunities = communities.filter(c =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -182,30 +178,22 @@ export default function CommunitiesPage() {
 
                   <div className="flex flex-col gap-2">
                     {isJoined ? (
-                      <>
                         <Link
-                          href={`/communities/${communityIdStr}`}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1 whitespace-nowrap"
+                        href={`/communities/${communityIdStr}`}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1 whitespace-nowrap justify-center"
                         >
-                          Open
-                          <ChevronRight size={16} />
+                        Open
+                        <ChevronRight size={16} />
                         </Link>
-                        <button
-                          onClick={() => handleJoinLeave(communityIdStr, true)}
-                          className="px-4 py-2 text-red-600 border border-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
-                        >
-                          Leave
-                        </button>
-                      </>
                     ) : (
-                      <button
-                        onClick={() => handleJoinLeave(communityIdStr, false)}
+                        <button
+                        onClick={() => handleJoinCommunity(communityIdStr)}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
-                      >
+                        >
                         Join
-                      </button>
+                        </button>
                     )}
-                  </div>
+                    </div>
                 </div>
               </div>
             )

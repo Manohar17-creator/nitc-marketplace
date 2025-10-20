@@ -92,17 +92,32 @@ export default function CommunityDetailPage({ params }) {
   }
 
   const fetchPosts = async (id, type) => {
-    try {
-      const response = await fetch(`/api/communities/${id}/posts?type=${type}`)
-      const data = await response.json()
-      
-      if (response.ok) {
-        setPosts(data.posts)
+  try {
+    let url = `/api/communities/${id}/posts?type=${type}`
+    
+    // For portfolio, only fetch current user's showcase posts
+    if (type === 'portfolio') {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setPosts([])
+        return
       }
-    } catch (error) {
-      console.error('Failed to fetch posts:', error)
+      url = `/api/communities/${id}/posts/my-portfolio`
     }
+
+    const token = localStorage.getItem('token')
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+
+    const response = await fetch(url, { headers })
+    const data = await response.json()
+    
+    if (response.ok) {
+      setPosts(data.posts)
+    }
+  } catch (error) {
+    console.error('Failed to fetch posts:', error)
   }
+}
 
   const fetchMembers = async (id) => {
     try {
@@ -247,54 +262,50 @@ export default function CommunityDetailPage({ params }) {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border-b sticky top-[120px] sm:top-[128px] z-10">
+        <div className="bg-white border-b sticky top-[120px] sm:top-[128px] z-10">
         <div className="max-w-4xl mx-auto flex overflow-x-auto scrollbar-hide">
-          <button
+            <button
             onClick={() => handleTabChange('feed')}
             className={`flex-1 min-w-[80px] px-4 py-3 font-medium text-sm transition-colors ${
-              activeTab === 'feed'
+                activeTab === 'feed'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
-          >
-            <MessageSquare size={18} className="inline mr-1" />
+            >
             Feed
-          </button>
-          <button
+            </button>
+            <button
             onClick={() => handleTabChange('job')}
             className={`flex-1 min-w-[80px] px-4 py-3 font-medium text-sm transition-colors ${
-              activeTab === 'job'
+                activeTab === 'job'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
-          >
-            <Briefcase size={18} className="inline mr-1" />
+            >
             Jobs
-          </button>
-          <button
-            onClick={() => handleTabChange('showcase')}
+            </button>
+            <button
+            onClick={() => handleTabChange('portfolio')}
             className={`flex-1 min-w-[90px] px-4 py-3 font-medium text-sm transition-colors ${
-              activeTab === 'showcase'
+                activeTab === 'portfolio'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
-          >
-            <Star size={18} className="inline mr-1" />
-            Showcase
-          </button>
-          <button
+            >
+            Portfolio
+            </button>
+            <button
             onClick={() => handleTabChange('members')}
             className={`flex-1 min-w-[90px] px-4 py-3 font-medium text-sm transition-colors ${
-              activeTab === 'members'
+                activeTab === 'members'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
-          >
-            <UsersIcon size={18} className="inline mr-1" />
+            >
             Members
-          </button>
+            </button>
         </div>
-      </div>
+        </div>
 
       {/* Content */}
       <div className="max-w-4xl mx-auto p-4 flex-1 w-full pb-8">
@@ -302,13 +313,26 @@ export default function CommunityDetailPage({ params }) {
         {activeTab !== 'members' && (
           <div className="space-y-4">
             {posts.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg">
-                {activeTab === 'feed' && <MessageSquare size={48} className="mx-auto text-gray-300 mb-4" />}
-                {activeTab === 'job' && <Briefcase size={48} className="mx-auto text-gray-300 mb-4" />}
-                {activeTab === 'showcase' && <Star size={48} className="mx-auto text-gray-300 mb-4" />}
-                <p className="text-gray-600 mb-2">No posts yet</p>
-                <p className="text-gray-500 text-sm">Be the first to post!</p>
-              </div>
+            <div className="text-center py-12 bg-white rounded-lg">
+                {activeTab === 'feed' && (
+                <>
+                    <p className="text-gray-600 mb-2">No posts yet</p>
+                    <p className="text-gray-500 text-sm">Be the first to post!</p>
+                </>
+                )}
+                {activeTab === 'job' && (
+                <>
+                    <p className="text-gray-600 mb-2">No jobs posted yet</p>
+                    <p className="text-gray-500 text-sm">Post a collaboration opportunity!</p>
+                </>
+                )}
+                {activeTab === 'portfolio' && (
+                <>
+                    <p className="text-gray-600 mb-2">Your portfolio is empty</p>
+                    <p className="text-gray-500 text-sm">Share your work to showcase your skills</p>
+                </>
+                )}
+            </div>
             ) : (
               posts.map(post => (
                 <div
@@ -321,8 +345,13 @@ export default function CommunityDetailPage({ params }) {
                       {post.authorName?.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900">{post.authorName}</div>
-                      <div className="text-xs text-gray-500">{formatTime(post.createdAt)}</div>
+                        <Link 
+                        href={`/communities/${communityId}/member/${post.authorId}`}
+                        className="font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                        >
+                        {post.authorName}
+                        </Link>
+                        <div className="text-xs text-gray-500">{formatTime(post.createdAt)}</div>
                     </div>
                     <div className="flex items-center gap-2">
                       {activeTab === 'job' && (
@@ -539,9 +568,9 @@ function PostModal({ communityId, activeTab, onClose, onSuccess }) {
               onChange={(e) => setFormData({ ...formData, type: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
-              <option value="feed">Feed Post</option>
-              <option value="job">Job/Collaboration</option>
-              <option value="showcase">Showcase</option>
+              <option value="feed">Feed Post (Everyone can see)</option>
+            <option value="job">Job/Collaboration (Everyone can see)</option>
+            <option value="portfolio">Portfolio (Only visible in your profile)</option>
             </select>
           </div>
 
