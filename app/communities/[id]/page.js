@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, MessageSquare, Briefcase, Star, Users as UsersIcon, Plus, Send } from 'lucide-react'
+import { ChevronLeft, MessageSquare, Briefcase, Star, Users as UsersIcon, Plus, Send , Trash2, LogOut } from 'lucide-react'
 import Link from 'next/link'
 
 export default function CommunityDetailPage({ params }) {
@@ -13,6 +13,7 @@ export default function CommunityDetailPage({ params }) {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showPostModal, setShowPostModal] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,6 +24,11 @@ export default function CommunityDetailPage({ params }) {
       await fetchPosts(id, 'feed')
     }
     fetchData()
+
+    if (typeof window !== 'undefined') {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      setCurrentUserId(user.id)
+    }
   }, [params])
 
   const fetchCommunity = async (id) => {
@@ -37,6 +43,51 @@ export default function CommunityDetailPage({ params }) {
       console.error('Failed to fetch community:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleLeaveCommunity = async () => {
+    if (!confirm('Are you sure you want to leave this community?')) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/communities/${communityId}/join`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        alert('Left community successfully')
+        router.push('/communities')
+      }
+    } catch (error) {
+      console.error('Failed to leave:', error)
+    }
+  }
+
+  const handleDeletePost = async (postId) => {
+    if (!confirm('Delete this post?')) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/communities/posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        alert('Post deleted successfully')
+        fetchPosts(communityId, activeTab)
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to delete post')
+      }
+    } catch (error) {
+      console.error('Failed to delete:', error)
     }
   }
 
@@ -172,12 +223,25 @@ export default function CommunityDetailPage({ params }) {
                 {community.memberCount} members • {community.postCount} posts
               </p>
             </div>
-            <button
-              onClick={() => setShowPostModal(true)}
-              className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
-            >
-              <Plus size={22} />
-            </button>
+
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleLeaveCommunity}
+                className="p-2 sm:px-4 sm:py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors flex items-center gap-2"
+                title="Leave Community"
+              >
+                <LogOut size={18} />
+                <span className="hidden sm:inline text-sm">Leave</span>
+              </button>
+              
+              <button
+                onClick={() => setShowPostModal(true)}
+                className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+              >
+                <Plus size={22} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -260,16 +324,28 @@ export default function CommunityDetailPage({ params }) {
                       <div className="font-semibold text-gray-900">{post.authorName}</div>
                       <div className="text-xs text-gray-500">{formatTime(post.createdAt)}</div>
                     </div>
-                    {activeTab === 'job' && (
-                      <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
-                        💼 Job
-                      </span>
-                    )}
-                    {activeTab === 'showcase' && (
-                      <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
-                        ⭐ Showcase
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {activeTab === 'job' && (
+                        <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+                          💼 Job
+                        </span>
+                      )}
+                      {activeTab === 'showcase' && (
+                        <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
+                          ⭐ Showcase
+                        </span>
+                      )}
+                      
+                      {currentUserId === post.authorId.toString() && (
+                        <button
+                          onClick={() => handleDeletePost(post._id)}
+                          className="text-red-600 hover:text-red-700 p-1.5 hover:bg-red-50 rounded transition-colors"
+                          title="Delete Post"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Post Title */}
@@ -337,11 +413,11 @@ export default function CommunityDetailPage({ params }) {
                         Joined {new Date(member.joinedAt).toLocaleDateString()}
                       </div>
                     </div>
-                    <Link
-                      href={`/profile/${member.userId}`}
+                   <Link
+                      href={`/communities/${communityId}/member/${member.userId}`}
                       className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"
                     >
-                      View Profile
+                      View Posts
                     </Link>
                   </div>
                 </div>

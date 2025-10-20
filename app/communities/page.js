@@ -14,6 +14,18 @@ export default function CommunitiesPage() {
   useEffect(() => {
     fetchCommunities()
     fetchMyCommunities()
+
+    const handleVisibilityChange = () => {
+    if (!document.hidden) {
+      fetchMyCommunities()
+    }
+  }
+
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  
+  return () => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }
   }, [])
 
   const fetchCommunities = async () => {
