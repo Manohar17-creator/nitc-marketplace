@@ -129,6 +129,14 @@ export default function HomePage() {
             </Link>
             
             <Link 
+              href="/attendance" 
+              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 text-gray-900 font-medium"
+            >
+              <User size={20} className="text-gray-700" />
+              <span>Attendance</span>
+            </Link>
+
+            <Link 
               href="/profile" 
               className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 text-gray-900 font-medium"
             >
