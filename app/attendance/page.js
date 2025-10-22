@@ -20,6 +20,7 @@ export default function AttendancePage() {
   const [subjectAttendance, setSubjectAttendance] = useState([])
   const [filterStatus, setFilterStatus] = useState('all') // all, present, absent
   const [sortOrder, setSortOrder] = useState('newest') // newest, oldest
+  const [filterReason, setFilterReason] = useState('all') 
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -242,22 +243,32 @@ export default function AttendancePage() {
 
   // ✅ FILTERED & SORTED attendance records (only present/absent, no noclass)
   const filteredAttendance = useMemo(() => {
-    let filtered = subjectAttendance.filter(record => record.status !== 'noclass')
-    
-    // Apply status filter
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(record => record.status === filterStatus)
-    }
-    
-    // Apply sort
-    const sorted = [...filtered].sort((a, b) => {
-      const dateA = new Date(a.date)
-      const dateB = new Date(b.date)
-      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
+  let filtered = subjectAttendance.filter(record => record.status !== 'noclass')
+  
+  // Apply status filter
+  if (filterStatus !== 'all') {
+    filtered = filtered.filter(record => record.status === filterStatus)
+  }
+  
+  // Apply reason filter (only for absent records)
+  if (filterReason !== 'all') {
+    filtered = filtered.filter(record => {
+      if (record.status !== 'absent') return false
+      const reason = record.reason || 'none'
+      return reason === filterReason
     })
-    
-    return sorted
-  }, [subjectAttendance, filterStatus, sortOrder])
+  }
+  
+  // Apply sort
+  const sorted = [...filtered].sort((a, b) => {
+    const dateA = new Date(a.date)
+    const dateB = new Date(b.date)
+    return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
+  })
+  
+  return sorted
+}, [subjectAttendance, filterStatus, filterReason, sortOrder])
+
 
   // Stats for detail view
   const detailStats = useMemo(() => {
@@ -266,6 +277,15 @@ export default function AttendancePage() {
     const absent = records.filter(r => r.status === 'absent').length
     return { present, absent, total: present + absent }
   }, [subjectAttendance])
+
+  const reasonCounts = useMemo(() => {
+  const absentRecords = subjectAttendance.filter(r => r.status === 'absent')
+  return {
+    placement: absentRecords.filter(r => r.reason === 'placement').length,
+    medical: absentRecords.filter(r => r.reason === 'medical').length,
+    none: absentRecords.filter(r => !r.reason || r.reason === 'none').length
+  }
+}, [subjectAttendance])
 
   if (loading) {
     return (
@@ -308,52 +328,105 @@ export default function AttendancePage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white border-b sticky top-[112px] sm:top-[120px] z-10 p-3">
-          <div className="max-w-4xl mx-auto flex items-center gap-3 overflow-x-auto scrollbar-hide">
+        <div className="bg-white border-b sticky top-[112px] sm:top-[120px] z-10 p-3 space-y-3">
+        <div className="max-w-4xl mx-auto">
+            {/* Status Filter */}
+            <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2">
             <div className="flex items-center gap-2 text-sm text-gray-700 flex-shrink-0">
-              <Filter size={16} />
-              <span className="font-medium">Filter:</span>
+                <Filter size={16} />
+                <span className="font-medium">Status:</span>
             </div>
             <button
-              onClick={() => setFilterStatus('all')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
+                onClick={() => setFilterStatus('all')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
                 filterStatus === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
-              All ({detailStats.total})
+                All ({detailStats.total})
             </button>
             <button
-              onClick={() => setFilterStatus('present')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
+                onClick={() => setFilterStatus('present')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
                 filterStatus === 'present'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
-              Present ({detailStats.present})
+                Present ({detailStats.present})
             </button>
             <button
-              onClick={() => setFilterStatus('absent')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
+                onClick={() => setFilterStatus('absent')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
                 filterStatus === 'absent'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                    ? 'bg-red-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
-              Absent ({detailStats.absent})
+                Absent ({detailStats.absent})
             </button>
-            <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-              <span className="text-sm text-gray-700 font-medium">Sort:</span>
-              <button
-                onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
-                className="px-3 py-1.5 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
-              >
-                {sortOrder === 'newest' ? '↓ Newest' : '↑ Oldest'}
-              </button>
             </div>
-          </div>
+
+            {/* Reason Filter (only show if viewing absent) */}
+            {(filterStatus === 'absent' || filterStatus === 'all') && detailStats.absent > 0 && (
+            <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2">
+                <div className="flex items-center gap-2 text-sm text-gray-700 flex-shrink-0">
+                <span className="font-medium">Reason:</span>
+                </div>
+                <button
+                onClick={() => setFilterReason('all')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
+                    filterReason === 'all'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                >
+                All
+                </button>
+                <button
+                onClick={() => setFilterReason('placement')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
+                    filterReason === 'placement'
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                >
+                💼 Placement ({reasonCounts.placement})
+                </button>
+                <button
+                onClick={() => setFilterReason('medical')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
+                    filterReason === 'medical'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                >
+                🏥 Medical ({reasonCounts.medical})
+                </button>
+                <button
+                onClick={() => setFilterReason('none')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
+                    filterReason === 'none'
+                    ? 'bg-gray-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                >
+                None ({reasonCounts.none})
+                </button>
+            </div>
+            )}
+
+            {/* Sort Toggle */}
+            <div className="flex items-center justify-end">
+            <button
+                onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+                {sortOrder === 'newest' ? '↓ Newest First' : '↑ Oldest First'}
+            </button>
+            </div>
+        </div>
         </div>
 
         {/* Attendance Records */}
@@ -458,80 +531,62 @@ export default function AttendancePage() {
       <div className="max-w-4xl mx-auto p-4 flex-1 w-full">
         {/* Bar Chart - Optimized */}
         {stats && stats.subjects.length > 0 && (
-          <div className="bg-white rounded-lg p-4 sm:p-6 mb-6 shadow-lg">
+        <div className="bg-white rounded-lg p-4 sm:p-6 mb-6 shadow-lg">
             <div className="flex items-center gap-2 mb-4">
-              <TrendingUp size={24} className="text-purple-600" />
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Subject Attendance</h2>
+            <TrendingUp size={24} className="text-purple-600" />
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Subject Attendance</h2>
             </div>
             <p className="text-sm text-gray-600 mb-4">Tap any bar to view details</p>
             
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartData} margin={{ top: 10, right: 5, left: -25, bottom: 50 }}>
+            <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 45 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                 <XAxis 
-                  dataKey="name" 
-                  angle={-45} 
-                  textAnchor="end" 
-                  height={70}
-                  tick={{ fontSize: 11 }}
-                  interval={0}
+                dataKey="name" 
+                angle={-45} 
+                textAnchor="end" 
+                height={65}
+                tick={{ fontSize: 10 }}
+                interval={0}
                 />
                 <YAxis 
-                  domain={[0, 100]} 
-                  tick={{ fontSize: 11 }}
-                  ticks={[0, 25, 50, 75, 100]}
+                domain={[0, 100]} 
+                tick={{ fontSize: 11 }}
+                ticks={[0, 50, 100]}
                 />
                 <Tooltip 
-                  content={({ active, payload }) => {
+                content={({ active, payload }) => {
                     if (active && payload && payload.length) {
-                      const data = payload[0].payload
-                      return (
-                        <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                          <p className="font-semibold text-gray-900 text-sm">{data.fullName}</p>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {data.percentage}%
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {data.present}/{data.total} classes
-                          </p>
+                    const data = payload[0].payload
+                    return (
+                        <div className="bg-white p-2.5 rounded-lg shadow-lg border border-gray-200">
+                        <p className="font-semibold text-gray-900 text-xs">{data.fullName}</p>
+                        <p className="text-xs text-gray-600 mt-0.5">
+                            {data.percentage}% • {data.present}/{data.total}
+                        </p>
                         </div>
-                      )
+                    )
                     }
                     return null
-                  }}
+                }}
                 />
                 <Bar 
-                  dataKey="percentage" 
-                  radius={[6, 6, 0, 0]}
-                  onClick={(data) => {
+                dataKey="percentage" 
+                radius={[4, 4, 0, 0]}
+                onClick={(data) => {
                     const subject = stats.subjects.find(s => s.subjectId === data.subjectId)
                     if (subject) handleBarClick(subject)
-                  }}
-                  cursor="pointer"
+                }}
+                cursor="pointer"
+                animationDuration={300}
                 >
-                  {chartData.map((entry, index) => (
+                {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={getPercentageColor(entry.percentage)} />
-                  ))}
+                ))}
                 </Bar>
-              </BarChart>
+            </BarChart>
             </ResponsiveContainer>
-
-            {/* Legend */}
-            <div className="flex items-center justify-center gap-4 mt-3 text-xs">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-green-500"></div>
-                <span className="text-gray-600">≥75%</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-yellow-500"></div>
-                <span className="text-gray-600">60-74%</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-red-500"></div>
-                <span className="text-gray-600">&lt;60%</span>
-              </div>
-            </div>
-          </div>
+        </div>
         )}
 
         {/* Date Selector */}
