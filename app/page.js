@@ -66,7 +66,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header - Better mobile spacing */}
-      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg">
+      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg safe-top">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between gap-4 h-[40px] sm:h-[48px]">
             {!isSearchVisible ? (
@@ -109,7 +109,7 @@ export default function HomePage() {
       </div>
 
       {/* Main Content */}
-      <div className="pt-24 sm:pt-20">
+      <div className="pt-24 sm:pt-20 pb-nav-safe">
         {/* Lost/Found Button */}
         <div className="max-w-6xl mx-auto px-4">
           <div className="mt-4 mb-2">
@@ -123,7 +123,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto p-4 pb-32">
+        <div className="max-w-6xl mx-auto p-4">
           {/* Categories */}
           <div className="mb-6 px-1">
             <h2 className="font-semibold text-gray-900 mb-4 text-base sm:text-lg">
@@ -187,7 +187,13 @@ export default function HomePage() {
 
       {/* Floating Action Button - Positioned above navbar */}
       <Link href="/post">
-        <button className="fixed bottom-24 right-4 sm:bottom-28 sm:right-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 z-50">
+        <button 
+          className="fixed bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 z-40"
+          style={{
+            bottom: `calc(72px + env(safe-area-inset-bottom))`,
+            right: '16px'
+          }}
+        >
           <Plus size={24} className="sm:w-7 sm:h-7" />
         </button>
       </Link>

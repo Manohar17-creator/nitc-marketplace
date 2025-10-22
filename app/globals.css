@@ -51,6 +51,8 @@ body {
     @apply text-gray-900;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Add padding for bottom navigation with safe area */
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
   }
 
   /* Ensure good contrast */
@@ -115,6 +117,11 @@ body {
   .safe-right {
     padding-right: env(safe-area-inset-right);
   }
+
+  /* Page bottom padding considering navbar + safe area */
+  .pb-nav-safe {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
 }
 
 .line-clamp-2 {
@@ -156,42 +163,6 @@ html {
   touch-action: manipulation;
 }
 
-/* Update the viewport height fixes */
-@layer base {
-  html, body {
-    @apply h-full;
-    @apply bg-gray-50;
-    height: 100%;
-    min-height: 100%;
-    overflow-x: hidden;
-    position: relative;
-  }
-
-  body {
-    min-height: -webkit-fill-available;
-    overflow-x: hidden;
-    position: relative;
-    width: 100%;
-  }
-}
-
-/* Update iOS specific fixes */
-@supports (-webkit-touch-callout: none) {
-  html {
-    height: -webkit-fill-available;
-  }
-  
-  body {
-    min-height: -webkit-fill-available;
-    overflow-x: hidden;
-  }
-
-  #__next, 
-  [data-nextjs-scroll-focus-boundary] {
-    min-height: -webkit-fill-available;
-  }
-}
-
 /* Add overscroll behavior to prevent bounce */
 html {
   overscroll-behavior-y: none;
@@ -218,6 +189,19 @@ body {
   body {
     min-height: 100vh;
     min-height: -webkit-fill-available;
-    padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+/* Smooth scrolling for better UX */
+html {
+  scroll-behavior: smooth;
+}
+
+/* WhatsApp-style navbar positioning */
+nav[class*="bottom-0"] {
+  /* Ensure navbar stays at bottom even with keyboard */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
