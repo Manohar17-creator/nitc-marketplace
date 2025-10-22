@@ -182,3 +182,16 @@ body {
   overscroll-behavior-y: none;
   background-color: rgb(249 250 251); /* bg-gray-50 */
 }
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 72px);
+  }
+}
+
+/* iOS PWA fixes */
+@supports (-webkit-touch-callout: none) {
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+}

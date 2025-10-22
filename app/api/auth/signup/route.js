@@ -37,15 +37,43 @@ export async function POST(request) {
     // Hash password
     const hashedPassword = await hashPassword(password)
 
+
+
     // Create user
     const result = await db.collection('users').insertOne({
       name,
       email,
       phone,
       password: hashedPassword,
-      isVerified: false, // Auto-verify for now
+      isVerified: false,  // Ensure this is always false
       createdAt: new Date(),
       listings: []
+    })
+
+    // After inserting user, send verification email
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/send-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          userId: result.insertedId.toString()
+        })
+      })
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError)
+    }
+
+    // Return response WITHOUT token (remove token from response)
+    return NextResponse.json({
+      message: 'Account created! Please check your email to verify.',
+      user: { 
+        id: result.insertedId,
+        name, 
+        email, 
+        phone,
+        isVerified: false 
+      }
     })
 
     // After inserting user, send verification email

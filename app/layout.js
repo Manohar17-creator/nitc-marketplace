@@ -1,4 +1,5 @@
 import './globals.css'
+import MobileNavbar from '@/components/MobileNavbar'
 
 export const metadata = {
   title: 'NITC Marketplace',
@@ -37,7 +38,11 @@ export default function RootLayout({ children }) {
           media="(prefers-color-scheme: dark)"
         />
       </head>
-      <body className="antialiased h-full bg-gray-50">{children}</body>
+      <body className="antialiased h-full bg-gray-50">
+        {children}
+        <MobileNavbar />
+        <div className="h-[72px]" /> {/* Spacer for bottom nav */}
+      </body>
     </html>
   )
 }

@@ -135,24 +135,28 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess(
+      // Show success message, don't store token or redirect
+      setSuccess(
         '✅ Account created! Check your NITC email for verification link. ' +
-        'You must verify before logging in.')
-
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', data.token)
-          localStorage.setItem('user', JSON.stringify(data.user))
-        }
-        
-      } else {
-        setError(data.error || 'Signup failed')
-      }
-    } catch (err) {
-      setError('Something went wrong')
-    } finally {
-      setLoading(false)
+        'You must verify before logging in.'
+      )
+      // Clear form
+      setSignupData({
+        name: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: ''
+      })
+    } else {
+      setError(data.error || 'Signup failed')
     }
+  } catch (err) {
+    setError('Something went wrong')
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">

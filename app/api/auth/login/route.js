@@ -18,6 +18,14 @@ export async function POST(request) {
       )
     }
 
+    if (!user.isVerified) {
+      return NextResponse.json({
+        error: 'Please verify your email before logging in',
+        needsVerification: true,
+        email: user.email
+      }, { status: 403 })
+    }
+    
     // Verify password
     const isValid = await verifyPassword(password, user.password)
     if (!isValid) {

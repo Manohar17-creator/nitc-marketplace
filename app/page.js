@@ -1,16 +1,16 @@
 // app/page.js
 'use client'
 import { useState, useEffect } from 'react'
-import { Search, Plus, User, Home, Tag, Book, Laptop, Ticket, Car, Building, PartyPopper, Menu, X } from 'lucide-react'
+import { Search, Plus, User, Home, Tag, Book, Laptop, Ticket, Car, Building, PartyPopper} from 'lucide-react'
 import Link from 'next/link'
 import ListingCard from '@/components/ListingCard'
+
 
 export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showMenu, setShowMenu] = useState(false)
   const [isSearchVisible, setIsSearchVisible] = useState(false)
 
   const categories = [
@@ -82,12 +82,7 @@ export default function HomePage() {
             >
               <Search size={22} />
             </button>
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
-            >
-              {showMenu ? <X size={22} /> : <Menu size={22} />}
-            </button>
+            
           </div>
         </>
       ) : (
@@ -96,7 +91,6 @@ export default function HomePage() {
             onClick={toggleSearch}
             className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
           >
-            <X size={22} />
           </button>
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -117,55 +111,7 @@ export default function HomePage() {
 
       {/* Menu Dropdown */}
       <div className="pt-24 sm:pt-20">
-      {showMenu && (
-        <div className="bg-white border-b shadow-lg p-4">
-          <div className="max-w-6xl mx-auto space-y-2">
-            <Link 
-              href="/communities" 
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 text-gray-900 font-medium"
-            >
-              <User size={20} className="text-gray-700" />
-              <span>Communities</span>
-            </Link>
-            
-            <Link 
-              href="/attendance" 
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 text-gray-900 font-medium"
-            >
-              <User size={20} className="text-gray-700" />
-              <span>Attendance</span>
-            </Link>
-
-            <Link 
-              href="/profile" 
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 text-gray-900 font-medium"
-            >
-              <User size={20} className="text-gray-700" />
-              <span>My Profile</span>
-            </Link>
-            
-            <Link 
-              href="/profile?tab=listings" 
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 text-gray-900 font-medium"
-            >
-              <Tag size={20} className="text-gray-700" />
-              <span>My Listings</span>
-            </Link>
-            <button 
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  localStorage.removeItem('token')
-                  localStorage.removeItem('user')
-                }
-                window.location.href = '/login'
-              }}
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 text-red-600"
-            >
-              <span>Logout</span>
-            </button>
-          </div>
-        </div>
-      )}
+      
 
       {/* After search bar, before categories */}
       <div className="max-w-6xl mx-auto px-4">
