@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Plus, X, ChevronLeft, TrendingUp, ArrowLeft } from 'lucide-react'
+import { Calendar, Plus, X, ChevronLeft, TrendingUp, ArrowLeft, Filter } from 'lucide-react'
 import Link from 'next/link'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
@@ -15,9 +15,11 @@ export default function AttendancePage() {
   const [newSubjectName, setNewSubjectName] = useState('')
   const [loading, setLoading] = useState(true)
   
-  // NEW: Subject detail view
+  // Subject detail view
   const [selectedSubject, setSelectedSubject] = useState(null)
   const [subjectAttendance, setSubjectAttendance] = useState([])
+  const [filterStatus, setFilterStatus] = useState('all') // all, present, absent
+  const [sortOrder, setSortOrder] = useState('newest') // newest, oldest
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -100,7 +102,6 @@ export default function AttendancePage() {
     }
   }
 
-  // NEW: Fetch detailed attendance for a subject
   const fetchSubjectDetail = async (subjectId) => {
     try {
       const token = localStorage.getItem('token')
@@ -215,26 +216,56 @@ export default function AttendancePage() {
   }
 
   const getPercentageColor = (percentage) => {
-    if (percentage >= 75) return '#10b981' // green
-    if (percentage >= 60) return '#f59e0b' // yellow
-    return '#ef4444' // red
+    if (percentage >= 75) return '#10b981'
+    if (percentage >= 60) return '#f59e0b'
+    return '#ef4444'
   }
 
-  // NEW: Handle bar click
   const handleBarClick = (subject) => {
     setSelectedSubject(subject)
+    setFilterStatus('all')
+    setSortOrder('newest')
     fetchSubjectDetail(subject.subjectId)
   }
 
-  // Prepare chart data
-  const chartData = stats?.subjects.map(s => ({
-    name: s.subjectName.length > 15 ? s.subjectName.substring(0, 15) + '...' : s.subjectName,
-    fullName: s.subjectName,
-    percentage: s.percentage,
-    present: s.presentClasses,
-    total: s.totalClasses,
-    subjectId: s.subjectId
-  })) || []
+  // ✅ OPTIMIZED: Memoized chart data (no re-render on unrelated state changes)
+  const chartData = useMemo(() => {
+    return stats?.subjects.map(s => ({
+      name: s.subjectName.length > 10 ? s.subjectName.substring(0, 10) + '..' : s.subjectName,
+      fullName: s.subjectName,
+      percentage: s.percentage,
+      present: s.presentClasses,
+      total: s.totalClasses,
+      subjectId: s.subjectId
+    })) || []
+  }, [stats])
+
+  // ✅ FILTERED & SORTED attendance records (only present/absent, no noclass)
+  const filteredAttendance = useMemo(() => {
+    let filtered = subjectAttendance.filter(record => record.status !== 'noclass')
+    
+    // Apply status filter
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(record => record.status === filterStatus)
+    }
+    
+    // Apply sort
+    const sorted = [...filtered].sort((a, b) => {
+      const dateA = new Date(a.date)
+      const dateB = new Date(b.date)
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
+    })
+    
+    return sorted
+  }, [subjectAttendance, filterStatus, sortOrder])
+
+  // Stats for detail view
+  const detailStats = useMemo(() => {
+    const records = subjectAttendance.filter(r => r.status !== 'noclass')
+    const present = records.filter(r => r.status === 'present').length
+    const absent = records.filter(r => r.status === 'absent').length
+    return { present, absent, total: present + absent }
+  }, [subjectAttendance])
 
   if (loading) {
     return (
@@ -263,7 +294,7 @@ export default function AttendancePage() {
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold">{selectedSubject.subjectName}</h1>
                 <p className="text-purple-100 text-xs sm:text-sm">
-                  {selectedSubject.percentage}% Attendance • {selectedSubject.presentClasses}/{selectedSubject.totalClasses} classes
+                  {selectedSubject.percentage}% • {detailStats.present}P / {detailStats.absent}A • Total: {detailStats.total}
                 </p>
               </div>
               <button
@@ -276,65 +307,113 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        {/* Attendance Calendar */}
+        {/* Filters */}
+        <div className="bg-white border-b sticky top-[112px] sm:top-[120px] z-10 p-3">
+          <div className="max-w-4xl mx-auto flex items-center gap-3 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-2 text-sm text-gray-700 flex-shrink-0">
+              <Filter size={16} />
+              <span className="font-medium">Filter:</span>
+            </div>
+            <button
+              onClick={() => setFilterStatus('all')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
+                filterStatus === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All ({detailStats.total})
+            </button>
+            <button
+              onClick={() => setFilterStatus('present')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
+                filterStatus === 'present'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Present ({detailStats.present})
+            </button>
+            <button
+              onClick={() => setFilterStatus('absent')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0 ${
+                filterStatus === 'absent'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Absent ({detailStats.absent})
+            </button>
+            <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+              <span className="text-sm text-gray-700 font-medium">Sort:</span>
+              <button
+                onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+                className="px-3 py-1.5 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+              >
+                {sortOrder === 'newest' ? '↓ Newest' : '↑ Oldest'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Attendance Records */}
         <div className="max-w-4xl mx-auto p-4 flex-1 w-full">
-          {subjectAttendance.length === 0 ? (
+          {filteredAttendance.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-lg">
               <Calendar size={48} className="mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-600">No attendance records yet</p>
+              <p className="text-gray-600">
+                {filterStatus === 'all' 
+                  ? 'No attendance records yet' 
+                  : `No ${filterStatus} records`}
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {subjectAttendance
-                .sort((a, b) => new Date(b.date) - new Date(a.date))
-                .map(record => (
-                  <div
-                    key={record._id}
-                    className={`bg-white rounded-lg p-4 shadow-sm border-l-4 ${
-                      record.status === 'present' 
-                        ? 'border-green-500' 
-                        : record.status === 'absent'
-                        ? 'border-red-500'
-                        : 'border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-gray-900">
-                          {new Date(record.date).toLocaleDateString('en-US', { 
-                            weekday: 'long', 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                          })}
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {record.status === 'present' && '✅ Present'}
-                          {record.status === 'absent' && (
-                            <>
-                              ❌ Absent
-                              {record.reason && record.reason !== 'none' && (
-                                <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded">
-                                  {record.reason === 'placement' ? '💼 Placement' : '🏥 Medical'}
-                                </span>
-                              )}
-                            </>
-                          )}
-                          {record.status === 'noclass' && '⚪ No Class'}
-                        </div>
+              {filteredAttendance.map(record => (
+                <div
+                  key={record._id}
+                  className={`bg-white rounded-lg p-4 shadow-sm border-l-4 ${
+                    record.status === 'present' 
+                      ? 'border-green-500' 
+                      : 'border-red-500'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900">
+                        {new Date(record.date).toLocaleDateString('en-US', { 
+                          weekday: 'short', 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
                       </div>
-                      <div className={`text-2xl ${
-                        record.status === 'present' 
-                          ? 'text-green-500' 
-                          : record.status === 'absent'
-                          ? 'text-red-500'
-                          : 'text-gray-400'
-                      }`}>
-                        {record.status === 'present' ? '✓' : record.status === 'absent' ? '✗' : '○'}
+                      <div className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                        {record.status === 'present' && (
+                          <span className="text-green-600 font-medium">✓ Present</span>
+                        )}
+                        {record.status === 'absent' && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-red-600 font-medium">✗ Absent</span>
+                            {record.reason && record.reason !== 'none' && (
+                              <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
+                                {record.reason === 'placement' ? '💼 Placement' : '🏥 Medical'}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
+                    <div className={`text-3xl ${
+                      record.status === 'present' 
+                        ? 'text-green-500' 
+                        : 'text-red-500'
+                    }`}>
+                      {record.status === 'present' ? '✓' : '✗'}
+                    </div>
                   </div>
-                ))}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -377,29 +456,30 @@ export default function AttendancePage() {
       </div>
 
       <div className="max-w-4xl mx-auto p-4 flex-1 w-full">
-        {/* Bar Chart */}
+        {/* Bar Chart - Optimized */}
         {stats && stats.subjects.length > 0 && (
           <div className="bg-white rounded-lg p-4 sm:p-6 mb-6 shadow-lg">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp size={24} className="text-purple-600" />
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Subject-wise Attendance</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Subject Attendance</h2>
             </div>
-            <p className="text-sm text-gray-600 mb-4">Tap any bar to view detailed attendance</p>
+            <p className="text-sm text-gray-600 mb-4">Tap any bar to view details</p>
             
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={chartData} margin={{ top: 10, right: 5, left: -25, bottom: 50 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                 <XAxis 
                   dataKey="name" 
                   angle={-45} 
                   textAnchor="end" 
-                  height={80}
-                  tick={{ fontSize: 12 }}
+                  height={70}
+                  tick={{ fontSize: 11 }}
+                  interval={0}
                 />
                 <YAxis 
                   domain={[0, 100]} 
-                  tick={{ fontSize: 12 }}
-                  label={{ value: 'Attendance %', angle: -90, position: 'insideLeft' }}
+                  tick={{ fontSize: 11 }}
+                  ticks={[0, 25, 50, 75, 100]}
                 />
                 <Tooltip 
                   content={({ active, payload }) => {
@@ -407,11 +487,13 @@ export default function AttendancePage() {
                       const data = payload[0].payload
                       return (
                         <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                          <p className="font-semibold text-gray-900">{data.fullName}</p>
+                          <p className="font-semibold text-gray-900 text-sm">{data.fullName}</p>
                           <p className="text-sm text-gray-600 mt-1">
-                            {data.percentage}% ({data.present}/{data.total} classes)
+                            {data.percentage}%
                           </p>
-                          <p className="text-xs text-blue-600 mt-2">Tap to view details</p>
+                          <p className="text-xs text-gray-500">
+                            {data.present}/{data.total} classes
+                          </p>
                         </div>
                       )
                     }
@@ -420,7 +502,7 @@ export default function AttendancePage() {
                 />
                 <Bar 
                   dataKey="percentage" 
-                  radius={[8, 8, 0, 0]}
+                  radius={[6, 6, 0, 0]}
                   onClick={(data) => {
                     const subject = stats.subjects.find(s => s.subjectId === data.subjectId)
                     if (subject) handleBarClick(subject)
@@ -435,16 +517,16 @@ export default function AttendancePage() {
             </ResponsiveContainer>
 
             {/* Legend */}
-            <div className="flex items-center justify-center gap-4 mt-4 text-xs sm:text-sm">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-4 mt-3 text-xs">
+              <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-green-500"></div>
                 <span className="text-gray-600">≥75%</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-yellow-500"></div>
                 <span className="text-gray-600">60-74%</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-red-500"></div>
                 <span className="text-gray-600">&lt;60%</span>
               </div>
@@ -514,7 +596,6 @@ export default function AttendancePage() {
                     </button>
                   </div>
 
-                  {/* Attendance Dropdown */}
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -531,7 +612,6 @@ export default function AttendancePage() {
                       </select>
                     </div>
 
-                    {/* Reason (only if absent) */}
                     {attendance.status === 'absent' && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
