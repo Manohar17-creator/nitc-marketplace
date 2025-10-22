@@ -3,7 +3,45 @@ import clientPromise from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
-// DELETE - Remove subject
+// GET - Fetch attendance records for a specific subject
+export async function GET(request, context) {
+  try {
+    const { subjectId } = await context.params
+    const token = request.headers.get('authorization')?.split(' ')[1]
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const decoded = verifyToken(token)
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    const client = await clientPromise
+    const db = client.db('nitc-marketplace')
+
+    const attendance = await db
+      .collection('attendance')
+      .find({
+        userId: new ObjectId(decoded.userId),
+        subjectId: new ObjectId(subjectId)
+      })
+      .sort({ date: -1 })
+      .toArray()
+
+    return NextResponse.json({ attendance })
+
+  } catch (error) {
+    console.error('Get subject attendance error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch attendance' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE - Delete subject
 export async function DELETE(request, context) {
   try {
     const { subjectId } = await context.params
@@ -29,6 +67,7 @@ export async function DELETE(request, context) {
 
     // Delete all attendance records for this subject
     await db.collection('attendance').deleteMany({
+      userId: new ObjectId(decoded.userId),
       subjectId: new ObjectId(subjectId)
     })
 

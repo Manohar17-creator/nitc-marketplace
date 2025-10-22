@@ -1,8 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, MessageSquare, Briefcase, Star, Users as UsersIcon, Plus, Send , Trash2, LogOut } from 'lucide-react'
+import { ChevronLeft, MessageSquare, Briefcase, Star, Users as UsersIcon, Plus, Send, Trash2, LogOut } from 'lucide-react'
 import Link from 'next/link'
+import { useSocket } from '@/hooks/useSocket'
 
 export default function CommunityDetailPage({ params }) {
   const router = useRouter()
@@ -14,6 +15,17 @@ export default function CommunityDetailPage({ params }) {
   const [loading, setLoading] = useState(true)
   const [showPostModal, setShowPostModal] = useState(false)
   const [currentUserId, setCurrentUserId] = useState(null)
+  
+  // ✅ CACHING STATE
+  const [cachedPosts, setCachedPosts] = useState({
+    feed: null,
+    job: null,
+    portfolio: null
+  })
+  const [cachedMembers, setCachedMembers] = useState(null)
+
+  // ✅ WEBSOCKET CONNECTION
+  const { socket, isConnected } = useSocket(communityId)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -30,6 +42,31 @@ export default function CommunityDetailPage({ params }) {
       setCurrentUserId(user.id)
     }
   }, [params])
+
+  // ✅ LISTEN FOR NEW POSTS VIA WEBSOCKET
+  useEffect(() => {
+    if (!socket) return
+
+    socket.on('new-post', (newPost) => {
+      console.log('New post received:', newPost)
+      
+      // Add to current view if matching type
+      if (activeTab === newPost.type || activeTab === 'feed') {
+        setPosts(prev => [newPost, ...prev])
+      }
+      
+      // Update cache for that post type
+      setCachedPosts(prev => ({
+        ...prev,
+        [newPost.type]: prev[newPost.type] ? [newPost, ...prev[newPost.type]] : [newPost],
+        feed: prev.feed ? [newPost, ...prev.feed] : [newPost]
+      }))
+    })
+
+    return () => {
+      socket.off('new-post')
+    }
+  }, [socket, activeTab])
 
   const fetchCommunity = async (id) => {
     try {
@@ -80,8 +117,17 @@ export default function CommunityDetailPage({ params }) {
       })
 
       if (response.ok) {
+        // Remove from current view
+        setPosts(prev => prev.filter(p => p._id !== postId))
+        
+        // Remove from cache
+        setCachedPosts(prev => ({
+          feed: prev.feed?.filter(p => p._id !== postId) || null,
+          job: prev.job?.filter(p => p._id !== postId) || null,
+          portfolio: prev.portfolio?.filter(p => p._id !== postId) || null
+        }))
+        
         alert('Post deleted successfully')
-        fetchPosts(communityId, activeTab)
       } else {
         const data = await response.json()
         alert(data.error || 'Failed to delete post')
@@ -91,52 +137,74 @@ export default function CommunityDetailPage({ params }) {
     }
   }
 
+  // ✅ OPTIMIZED FETCH WITH CACHING
   const fetchPosts = async (id, type) => {
-  try {
-    let url = `/api/communities/${id}/posts?type=${type}`
-    
-    // For portfolio, only fetch current user's showcase posts
-    if (type === 'portfolio') {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        setPosts([])
-        return
+    try {
+      let url = `/api/communities/${id}/posts?type=${type}`
+      
+      if (type === 'portfolio') {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          setPosts([])
+          setCachedPosts(prev => ({ ...prev, portfolio: [] }))
+          return
+        }
+        url = `/api/communities/${id}/posts/my-portfolio`
       }
-      url = `/api/communities/${id}/posts/my-portfolio`
-    }
 
-    const token = localStorage.getItem('token')
-    const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+      const token = localStorage.getItem('token')
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
 
-    const response = await fetch(url, { headers })
-    const data = await response.json()
-    
-    if (response.ok) {
-      setPosts(data.posts)
+      const response = await fetch(url, { headers })
+      const data = await response.json()
+      
+      if (response.ok) {
+        setPosts(data.posts)
+        // Cache the data
+        setCachedPosts(prev => ({ ...prev, [type]: data.posts }))
+      }
+    } catch (error) {
+      console.error('Failed to fetch posts:', error)
     }
-  } catch (error) {
-    console.error('Failed to fetch posts:', error)
   }
-}
 
   const fetchMembers = async (id) => {
+    // Use cache if available
+    if (cachedMembers) {
+      setMembers(cachedMembers)
+    }
+
     try {
       const response = await fetch(`/api/communities/${id}/members`)
       const data = await response.json()
       
       if (response.ok) {
         setMembers(data.members)
+        setCachedMembers(data.members)
       }
     } catch (error) {
       console.error('Failed to fetch members:', error)
     }
   }
 
+  // ✅ INSTANT TAB SWITCHING
   const handleTabChange = (tab) => {
     setActiveTab(tab)
+    
     if (tab === 'members') {
+      // Show cached members immediately
+      if (cachedMembers) {
+        setMembers(cachedMembers)
+      }
       fetchMembers(communityId)
     } else {
+      // Show cached posts immediately
+      if (cachedPosts[tab]) {
+        setPosts(cachedPosts[tab])
+      } else {
+        setPosts([])
+      }
+      // Fetch fresh data in background
       fetchPosts(communityId, tab)
     }
   }
@@ -164,7 +232,6 @@ export default function CommunityDetailPage({ params }) {
 
     if (embedType === 'instagram') {
       return (
-        
         <a
           href={embedUrl}
           target="_blank"
@@ -199,6 +266,7 @@ export default function CommunityDetailPage({ params }) {
     const diffHours = Math.floor(diffMins / 60)
     const diffDays = Math.floor(diffHours / 24)
 
+    if (diffMins < 1) return 'Just now'
     if (diffMins < 60) return `${diffMins}m ago`
     if (diffHours < 24) return `${diffHours}h ago`
     if (diffDays === 1) return 'Yesterday'
@@ -215,10 +283,10 @@ export default function CommunityDetailPage({ params }) {
   }
 
   return (
-    <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col">
+    <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col pb-nav-safe">
       {/* Header */}
       <div 
-        className="text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg flex-shrink-0"
+        className="text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg flex-shrink-0 safe-top"
         style={{ background: `linear-gradient(135deg, ${community.color}, ${community.color}dd)` }}
       >
         <div className="max-w-4xl mx-auto">
@@ -231,7 +299,16 @@ export default function CommunityDetailPage({ params }) {
           </button>
           
           <div className="flex items-center gap-3">
-            <div className="text-4xl">{community.icon}</div>
+            <div className="text-4xl relative">
+              {community.icon}
+              {/* ✅ CONNECTION INDICATOR */}
+              {isConnected && (
+                <div 
+                  className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-white" 
+                  title="Live updates enabled"
+                />
+              )}
+            </div>
             <div className="flex-1">
               <h1 className="text-xl sm:text-2xl font-bold">{community.name}</h1>
               <p className="text-white/90 text-xs sm:text-sm">
@@ -239,7 +316,6 @@ export default function CommunityDetailPage({ params }) {
               </p>
             </div>
 
-            
             <div className="flex items-center gap-2">
               <button
                 onClick={handleLeaveCommunity}
@@ -262,77 +338,77 @@ export default function CommunityDetailPage({ params }) {
       </div>
 
       {/* Tabs */}
-        <div className="bg-white border-b sticky top-[120px] sm:top-[128px] z-10">
+      <div className="bg-white border-b sticky top-[120px] sm:top-[128px] z-10">
         <div className="max-w-4xl mx-auto flex overflow-x-auto scrollbar-hide">
-            <button
+          <button
             onClick={() => handleTabChange('feed')}
             className={`flex-1 min-w-[80px] px-4 py-3 font-medium text-sm transition-colors ${
-                activeTab === 'feed'
+              activeTab === 'feed'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
-            >
+          >
             Feed
-            </button>
-            <button
+          </button>
+          <button
             onClick={() => handleTabChange('job')}
             className={`flex-1 min-w-[80px] px-4 py-3 font-medium text-sm transition-colors ${
-                activeTab === 'job'
+              activeTab === 'job'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
-            >
+          >
             Jobs
-            </button>
-            <button
+          </button>
+          <button
             onClick={() => handleTabChange('portfolio')}
             className={`flex-1 min-w-[90px] px-4 py-3 font-medium text-sm transition-colors ${
-                activeTab === 'portfolio'
+              activeTab === 'portfolio'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
-            >
+          >
             Portfolio
-            </button>
-            <button
+          </button>
+          <button
             onClick={() => handleTabChange('members')}
             className={`flex-1 min-w-[90px] px-4 py-3 font-medium text-sm transition-colors ${
-                activeTab === 'members'
+              activeTab === 'members'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
-            >
+          >
             Members
-            </button>
+          </button>
         </div>
-        </div>
+      </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto p-4 flex-1 w-full pb-8">
-        {/* Feed/Jobs/Showcase Tab */}
+      <div className="max-w-4xl mx-auto p-4 flex-1 w-full">
+        {/* Feed/Jobs/Portfolio Tab */}
         {activeTab !== 'members' && (
           <div className="space-y-4">
             {posts.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg">
+              <div className="text-center py-12 bg-white rounded-lg">
                 {activeTab === 'feed' && (
-                <>
+                  <>
                     <p className="text-gray-600 mb-2">No posts yet</p>
                     <p className="text-gray-500 text-sm">Be the first to post!</p>
-                </>
+                  </>
                 )}
                 {activeTab === 'job' && (
-                <>
+                  <>
                     <p className="text-gray-600 mb-2">No jobs posted yet</p>
                     <p className="text-gray-500 text-sm">Post a collaboration opportunity!</p>
-                </>
+                  </>
                 )}
                 {activeTab === 'portfolio' && (
-                <>
+                  <>
                     <p className="text-gray-600 mb-2">Your portfolio is empty</p>
                     <p className="text-gray-500 text-sm">Share your work to showcase your skills</p>
-                </>
+                  </>
                 )}
-            </div>
+              </div>
             ) : (
               posts.map(post => (
                 <div
@@ -345,27 +421,27 @@ export default function CommunityDetailPage({ params }) {
                       {post.authorName?.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <Link 
+                      <Link 
                         href={`/communities/${communityId}/member/${post.authorId}`}
                         className="font-semibold text-gray-900 hover:text-blue-600 transition-colors"
-                        >
+                      >
                         {post.authorName}
-                        </Link>
-                        <div className="text-xs text-gray-500">{formatTime(post.createdAt)}</div>
+                      </Link>
+                      <div className="text-xs text-gray-500">{formatTime(post.createdAt)}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {activeTab === 'job' && (
+                      {post.type === 'job' && (
                         <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                           💼 Job
                         </span>
                       )}
-                      {activeTab === 'showcase' && (
+                      {post.type === 'portfolio' && (
                         <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
-                          ⭐ Showcase
+                          ⭐ Portfolio
                         </span>
                       )}
                       
-                      {currentUserId === post.authorId.toString() && (
+                      {currentUserId === post.authorId?.toString() && (
                         <button
                           onClick={() => handleDeletePost(post._id)}
                           className="text-red-600 hover:text-red-700 p-1.5 hover:bg-red-50 rounded transition-colors"
@@ -402,7 +478,7 @@ export default function CommunityDetailPage({ params }) {
                       <span>{post.commentCount || 0} comments</span>
                     </Link>
                     
-                    {activeTab === 'job' && (
+                    {post.type === 'job' && (
                       <Link
                         href={`/communities/post/${post._id}`}
                         className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
@@ -442,7 +518,7 @@ export default function CommunityDetailPage({ params }) {
                         Joined {new Date(member.joinedAt).toLocaleDateString()}
                       </div>
                     </div>
-                   <Link
+                    <Link
                       href={`/communities/${communityId}/member/${member.userId}`}
                       className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"
                     >
@@ -464,6 +540,7 @@ export default function CommunityDetailPage({ params }) {
           onClose={() => setShowPostModal(false)}
           onSuccess={() => {
             setShowPostModal(false)
+            // Data will update via WebSocket, but also refresh to be safe
             fetchPosts(communityId, activeTab)
           }}
         />
@@ -569,13 +646,13 @@ function PostModal({ communityId, activeTab, onClose, onSuccess }) {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
               <option value="feed">Feed Post (Everyone can see)</option>
-            <option value="job">Job/Collaboration (Everyone can see)</option>
-            <option value="portfolio">Portfolio (Only visible in your profile)</option>
+              <option value="job">Job/Collaboration (Everyone can see)</option>
+              <option value="portfolio">Portfolio (Only visible in your profile)</option>
             </select>
           </div>
 
-          {/* Title (for jobs and showcase) */}
-          {(formData.type === 'job' || formData.type === 'showcase') && (
+          {/* Title (for jobs and portfolio) */}
+          {(formData.type === 'job' || formData.type === 'portfolio') && (
             <div className="mb-4">
               <label className="block text-gray-900 font-semibold mb-2 text-sm">
                 Title

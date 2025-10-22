@@ -1,8 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Plus, X, ChevronLeft, TrendingUp } from 'lucide-react'
+import { Calendar, Plus, X, ChevronLeft, TrendingUp, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 export default function AttendancePage() {
   const router = useRouter()
@@ -13,6 +14,10 @@ export default function AttendancePage() {
   const [showAddSubject, setShowAddSubject] = useState(false)
   const [newSubjectName, setNewSubjectName] = useState('')
   const [loading, setLoading] = useState(true)
+  
+  // NEW: Subject detail view
+  const [selectedSubject, setSelectedSubject] = useState(null)
+  const [subjectAttendance, setSubjectAttendance] = useState([])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -27,10 +32,10 @@ export default function AttendancePage() {
   }, [router])
 
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && !selectedSubject) {
       fetchTodayAttendance()
     }
-  }, [selectedDate])
+  }, [selectedDate, selectedSubject])
 
   const fetchSubjects = async () => {
     try {
@@ -95,6 +100,25 @@ export default function AttendancePage() {
     }
   }
 
+  // NEW: Fetch detailed attendance for a subject
+  const fetchSubjectDetail = async (subjectId) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/attendance/subjects/${subjectId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const data = await response.json()
+      if (response.ok) {
+        setSubjectAttendance(data.attendance)
+      }
+    } catch (error) {
+      console.error('Failed to fetch subject detail:', error)
+    }
+  }
+
   const handleAddSubject = async () => {
     if (!newSubjectName.trim()) return
 
@@ -138,6 +162,9 @@ export default function AttendancePage() {
       if (response.ok) {
         await fetchSubjects()
         await fetchStats()
+        if (selectedSubject?._id === subjectId) {
+          setSelectedSubject(null)
+        }
       }
     } catch (error) {
       console.error('Failed to delete subject:', error)
@@ -188,10 +215,26 @@ export default function AttendancePage() {
   }
 
   const getPercentageColor = (percentage) => {
-    if (percentage >= 75) return 'text-green-600'
-    if (percentage >= 60) return 'text-yellow-600'
-    return 'text-red-600'
+    if (percentage >= 75) return '#10b981' // green
+    if (percentage >= 60) return '#f59e0b' // yellow
+    return '#ef4444' // red
   }
+
+  // NEW: Handle bar click
+  const handleBarClick = (subject) => {
+    setSelectedSubject(subject)
+    fetchSubjectDetail(subject.subjectId)
+  }
+
+  // Prepare chart data
+  const chartData = stats?.subjects.map(s => ({
+    name: s.subjectName.length > 15 ? s.subjectName.substring(0, 15) + '...' : s.subjectName,
+    fullName: s.subjectName,
+    percentage: s.percentage,
+    present: s.presentClasses,
+    total: s.totalClasses,
+    subjectId: s.subjectId
+  })) || []
 
   if (loading) {
     return (
@@ -201,10 +244,109 @@ export default function AttendancePage() {
     )
   }
 
+  // Subject Detail View
+  if (selectedSubject) {
+    return (
+      <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col pb-nav-safe">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg flex-shrink-0 safe-top">
+          <div className="max-w-4xl mx-auto">
+            <button 
+              onClick={() => setSelectedSubject(null)}
+              className="flex items-center gap-2 mb-3 hover:opacity-80 active:scale-95 transition"
+            >
+              <ArrowLeft size={22} />
+              <span className="text-sm">Back to Overview</span>
+            </button>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold">{selectedSubject.subjectName}</h1>
+                <p className="text-purple-100 text-xs sm:text-sm">
+                  {selectedSubject.percentage}% Attendance • {selectedSubject.presentClasses}/{selectedSubject.totalClasses} classes
+                </p>
+              </div>
+              <button
+                onClick={() => handleDeleteSubject(selectedSubject.subjectId)}
+                className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Attendance Calendar */}
+        <div className="max-w-4xl mx-auto p-4 flex-1 w-full">
+          {subjectAttendance.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-lg">
+              <Calendar size={48} className="mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-600">No attendance records yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {subjectAttendance
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .map(record => (
+                  <div
+                    key={record._id}
+                    className={`bg-white rounded-lg p-4 shadow-sm border-l-4 ${
+                      record.status === 'present' 
+                        ? 'border-green-500' 
+                        : record.status === 'absent'
+                        ? 'border-red-500'
+                        : 'border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-gray-900">
+                          {new Date(record.date).toLocaleDateString('en-US', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {record.status === 'present' && '✅ Present'}
+                          {record.status === 'absent' && (
+                            <>
+                              ❌ Absent
+                              {record.reason && record.reason !== 'none' && (
+                                <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded">
+                                  {record.reason === 'placement' ? '💼 Placement' : '🏥 Medical'}
+                                </span>
+                              )}
+                            </>
+                          )}
+                          {record.status === 'noclass' && '⚪ No Class'}
+                        </div>
+                      </div>
+                      <div className={`text-2xl ${
+                        record.status === 'present' 
+                          ? 'text-green-500' 
+                          : record.status === 'absent'
+                          ? 'text-red-500'
+                          : 'text-gray-400'
+                      }`}>
+                        {record.status === 'present' ? '✓' : record.status === 'absent' ? '✗' : '○'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Main Overview View
   return (
-    <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col">
+    <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col pb-nav-safe">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg flex-shrink-0">
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg flex-shrink-0 safe-top">
         <div className="max-w-4xl mx-auto">
           <Link 
             href="/"
@@ -234,32 +376,86 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-4 flex-1 w-full pb-24">
-        {/* Overall Stats */}
-        {stats && stats.overall.totalClasses > 0 && (
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white rounded-lg p-6 mb-6 shadow-lg">
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUp size={24} />
-              <h2 className="text-xl font-bold">Overall Attendance</h2>
+      <div className="max-w-4xl mx-auto p-4 flex-1 w-full">
+        {/* Bar Chart */}
+        {stats && stats.subjects.length > 0 && (
+          <div className="bg-white rounded-lg p-4 sm:p-6 mb-6 shadow-lg">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp size={24} className="text-purple-600" />
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Subject-wise Attendance</h2>
             </div>
-            <div className="text-5xl font-bold mb-2">
-              {stats.overall.percentage}%
-            </div>
-            <div className="text-purple-100 text-sm">
-              {stats.overall.presentClasses} present out of {stats.overall.totalClasses} classes
-            </div>
-            {stats.overall.percentage < 75 && (
-              <div className="mt-3 px-3 py-2 bg-red-500/20 rounded-lg text-sm">
-                ⚠️ Below 75%! Attend more classes.
+            <p className="text-sm text-gray-600 mb-4">Tap any bar to view detailed attendance</p>
+            
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="name" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={80}
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis 
+                  domain={[0, 100]} 
+                  tick={{ fontSize: 12 }}
+                  label={{ value: 'Attendance %', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload
+                      return (
+                        <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                          <p className="font-semibold text-gray-900">{data.fullName}</p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {data.percentage}% ({data.present}/{data.total} classes)
+                          </p>
+                          <p className="text-xs text-blue-600 mt-2">Tap to view details</p>
+                        </div>
+                      )
+                    }
+                    return null
+                  }}
+                />
+                <Bar 
+                  dataKey="percentage" 
+                  radius={[8, 8, 0, 0]}
+                  onClick={(data) => {
+                    const subject = stats.subjects.find(s => s.subjectId === data.subjectId)
+                    if (subject) handleBarClick(subject)
+                  }}
+                  cursor="pointer"
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={getPercentageColor(entry.percentage)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+
+            {/* Legend */}
+            <div className="flex items-center justify-center gap-4 mt-4 text-xs sm:text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-green-500"></div>
+                <span className="text-gray-600">≥75%</span>
               </div>
-            )}
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-yellow-500"></div>
+                <span className="text-gray-600">60-74%</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-red-500"></div>
+                <span className="text-gray-600">&lt;60%</span>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Date Selector */}
         <div className="bg-white rounded-lg p-4 shadow-md mb-4">
           <label className="block text-gray-900 font-semibold mb-2">
-            Select Date
+            Mark Attendance for
           </label>
           <input
             type="date"
@@ -302,7 +498,7 @@ export default function AttendancePage() {
                       </h3>
                       {subjectStats && subjectStats.totalClasses > 0 && (
                         <div className="text-sm text-gray-600">
-                          <span className={`font-bold ${getPercentageColor(subjectStats.percentage)}`}>
+                          <span className="font-bold" style={{ color: getPercentageColor(subjectStats.percentage) }}>
                             {subjectStats.percentage}%
                           </span>
                           {' • '}
@@ -363,10 +559,14 @@ export default function AttendancePage() {
         {subjects.length > 0 && (
           <button
             onClick={handleSaveAttendance}
-            className="fixed bottom-6 right-6 px-6 py-4 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-all hover:scale-110 font-semibold flex items-center gap-2"
+            className="fixed bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-all hover:scale-110 font-semibold flex items-center gap-2 px-6 py-4 z-40"
+            style={{
+              bottom: `calc(72px + env(safe-area-inset-bottom))`,
+              right: '16px'
+            }}
           >
             <Calendar size={20} />
-            Save Attendance
+            Save
           </button>
         )}
       </div>

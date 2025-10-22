@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
+import { getIO } from '@/lib/socket'
 
 // GET - Fetch community posts
 export async function GET(request, context) {
@@ -54,7 +55,6 @@ export async function POST(request, context) {
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
-    // Check if user is member
     const member = await db.collection('community_members').findOne({
       userId: new ObjectId(decoded.userId),
       communityId: new ObjectId(id)
@@ -67,7 +67,6 @@ export async function POST(request, context) {
       )
     }
 
-    // Get user info
     const user = await db.collection('users').findOne({
       _id: new ObjectId(decoded.userId)
     })
@@ -75,25 +74,37 @@ export async function POST(request, context) {
     const data = await request.json()
     const { type, title, content, embedUrl, embedType } = data
 
-    const result = await db.collection('community_posts').insertOne({
+    const newPost = {
       communityId: new ObjectId(id),
       authorId: new ObjectId(decoded.userId),
       authorName: user.name,
       authorEmail: user.email,
-      type, // feed, job, showcase
+      type,
       title: title || '',
       content,
       embedUrl: embedUrl || null,
-      embedType: embedType || null, // youtube, instagram, twitter
+      embedType: embedType || null,
       commentCount: 0,
       createdAt: new Date()
-    })
+    }
 
-    // Increment post count
+    const result = await db.collection('community_posts').insertOne(newPost)
+
     await db.collection('communities').updateOne(
       { _id: new ObjectId(id) },
       { $inc: { postCount: 1 } }
     )
+
+    // ✅ EMIT WEBSOCKET EVENT
+    try {
+      const io = getIO()
+      io.to(`community:${id}`).emit('new-post', {
+        ...newPost,
+        _id: result.insertedId
+      })
+    } catch (err) {
+      console.log('Socket emit skipped (server may not be running)')
+    }
 
     return NextResponse.json({
       message: 'Post created',
