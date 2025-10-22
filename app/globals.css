@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Support for iPhone safe areas */
+  --sab: env(safe-area-inset-bottom);
+  --sat: env(safe-area-inset-top);
 }
 
 @theme inline {
@@ -95,6 +98,23 @@ body {
   html {
     -webkit-text-size-adjust: 100%;
   }
+
+  /* Safe area utilities for iPhone */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
 }
 
 .line-clamp-2 {
@@ -183,15 +203,21 @@ body {
   background-color: rgb(249 250 251); /* bg-gray-50 */
 }
 
-@layer utilities {
-  .safe-bottom {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 72px);
-  }
-}
-
 /* iOS PWA fixes */
 @supports (-webkit-touch-callout: none) {
   .min-h-screen {
     min-height: -webkit-fill-available;
+  }
+  
+  /* Fix for iPhone home indicator area */
+  html {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
