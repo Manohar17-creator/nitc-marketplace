@@ -18,29 +18,24 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full bg-gray-50">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#2563eb" />
-        <meta 
-          name="viewport" 
-          content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" 
-        />
-        <meta 
-          name="theme-color" 
-          content="rgb(249 250 251)"
-          media="(prefers-color-scheme: light)"
-        />
-        <meta 
-          name="theme-color" 
-          content="rgb(249 250 251)"
-          media="(prefers-color-scheme: dark)"
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
         />
       </head>
-      <body className="antialiased h-full bg-gray-50">
-        {children}
+      <body className="h-full flex flex-col overflow-hidden bg-gray-50 antialiased">
+        {/* Fixed header handled inside individual pages */}
+        <main className="flex-1 overflow-y-auto overscroll-contain">
+          {children}
+        </main>
+
+        {/* Fixed Bottom Navbar */}
         <MobileNavbar />
       </body>
     </html>
