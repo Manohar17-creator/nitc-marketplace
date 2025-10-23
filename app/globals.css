@@ -223,3 +223,47 @@ main {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ---------- add into globals.css (near bottom) ---------- */
+
+/* prevent horizontal scrolling on the whole app */
+html, body, #__next, [data-nextjs-scroll-focus-boundary] {
+  overflow-x: hidden !important;
+  width: 100%;
+}
+
+/* Fix Safari header rotation / z-index flicker by forcing compositor layer */
+header, .bg-gradient-to-r, .sticky {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+}
+
+/* iOS PWA: make main scrollable with native momentum */
+main {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Date input styling for iOS to avoid it overflowing card */
+input[type="date"] {
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  box-sizing: border-box;
+  background-clip: padding-box;
+  max-width: 100%;
+  width: 100%;
+}
+
+/* remove unexpected margins/padding from native pickers */
+input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
+  margin: 0;
+}
+
+/* Utility: force no horizontal overflow for wrappers */
+.overflow-x-hidden {
+  overflow-x: hidden !important;
+}
+

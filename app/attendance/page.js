@@ -186,18 +186,18 @@ export default function AttendancePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="bg-gray-50 overflow-x-hidden flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col pb-nav-safe">
+    <div className="bg-gray-50 overflow-x-hidden flex flex-col pb-nav-safe">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg flex-shrink-0 safe-top">
+      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg safe-top">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
             <div className="flex items-center gap-3">
               <Calendar size={28} />
               <div>
@@ -206,10 +206,10 @@ export default function AttendancePage() {
               </div>
             </div>
             <button
-              onClick={() => setShowAddSubject(true)}
-              className="p-2 sm:p-3 bg-purple-500 hover:bg-purple-600 rounded-full transition-colors"
+                onClick={() => setShowAddSubject(true)}
+                className="p-2 sm:p-3 bg-blue-500 hover:bg-blue-600 rounded-full transition-colors"
             >
-              <Plus size={22} />
+                <Plus size={22} className="text-white" />
             </button>
           </div>
         </div>
@@ -218,16 +218,20 @@ export default function AttendancePage() {
       {/* Main Content */}
       <div className="max-w-4xl mx-auto p-4 flex-1 w-full">
         {/* Date Selector */}
-        <div className="bg-white rounded-lg p-4 shadow-md mb-4">
-          <label className="block text-gray-900 font-semibold mb-2">Mark Attendance for</label>
-          <input
+        <div className="bg-white rounded-lg p-4 shadow-md mb-4 overflow-hidden">
+        <label className="block text-gray-900 font-semibold mb-2">Mark Attendance for</label>
+        <div className="relative rounded-lg bg-white">
+            <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
             max={new Date().toISOString().split('T')[0]}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          />
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-sm"
+            style={{ WebkitAppearance: 'none' }}
+            />
         </div>
+        </div>
+
 
         {/* Subjects */}
         {subjects.length === 0 ? (

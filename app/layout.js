@@ -1,3 +1,4 @@
+// app/layout.js
 import './globals.css'
 import MobileNavbar from '@/components/MobileNavbar'
 
@@ -7,27 +8,16 @@ export const metadata = {
   manifest: '/manifest.json',
 }
 
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 5,
-  userScalable: true,
-  themeColor: '#2563eb',
-  viewportFit: 'cover',
-}
-
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="h-full bg-gray-50">
+    <html lang="en" className="h-full">
       <body className="h-screen flex flex-col bg-gray-50 antialiased overflow-hidden">
-        {/* Fixed Header will be inside each page (e.g. page.js) */}
-        
-        {/* ✅ Scrollable content */}
-        <main className="flex-1 overflow-y-auto overscroll-contain h-full">
+        {/* main is the only scrollable element */}
+        <main className="flex-1 overflow-y-auto overscroll-contain">
           {children}
         </main>
 
-        {/* ✅ Fixed Bottom Navbar */}
+        {/* MobileNavbar is fixed + outside main */}
         <MobileNavbar />
       </body>
     </html>

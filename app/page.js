@@ -84,7 +84,7 @@ export default function HomePage() {
       {/* Header - Fixed height to prevent navbar jump */}
       <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg safe-top">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between gap-4 h-[48px]">
+          <div className="flex items-center justify-between px-4 h-[64px] sm:h-[72px]]">
             {!isSearchVisible ? (
               <>
                 <div className="flex-shrink-0">
