@@ -267,3 +267,13 @@ input[type="date"]::-webkit-datetime-edit {
   overflow-x: hidden !important;
 }
 
+:root {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+html,
+body {
+  height: 100%;
+  overscroll-behavior-y: none;
+  -webkit-touch-callout: none;
+}
+

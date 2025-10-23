@@ -217,9 +217,9 @@ export default function AttendancePage() {
   </div>
 </div>
 
-<main className="pt-[72px] pb-nav-safe px-4 bg-gray-50 min-h-screen">
+<main className="pt-[72px] pb-nav-safe  bg-gray-50 min-h-screen">
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto p-4 flex-1 w-full">
+       <div className="max-w-6xl mx-auto px-4 mt-4 mb-4">
         {/* Date Selector */}
         <div className="bg-white rounded-lg p-4 shadow-md mb-4 overflow-hidden">
         <label className="block text-gray-900 font-semibold mb-2">Mark Attendance for</label>
