@@ -17,93 +17,110 @@ const toggleSearch = () => setIsSearchVisible(prev => !prev)
 
 
   useEffect(() => {
-    fetchCommunities()
-    fetchMyCommunities()
+  // Load from cache immediately
+  const cachedCommunities = localStorage.getItem('cached_communities')
+  const cachedMyIds = localStorage.getItem('cached_my_community_ids')
+  
+  if (cachedCommunities) {
+    setCommunities(JSON.parse(cachedCommunities))
+    setLoading(false)
+  }
+  if (cachedMyIds) {
+    setMyCommunitiesIds(JSON.parse(cachedMyIds))
+  }
 
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        fetchMyCommunities()
-      }
+  // Fetch fresh data in background
+  fetchCommunities()
+  fetchMyCommunities()
+
+  const handleVisibilityChange = () => {
+    if (!document.hidden) {
+      fetchMyCommunities()
     }
+  }
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  
+  return () => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }
+}, [])
+
+const fetchCommunities = async () => {
+  try {
+    const response = await fetch('/api/communities')
+    const data = await response.json()
     
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    if (response.ok) {
+      setCommunities(data.communities)
+      // Cache the data
+      localStorage.setItem('cached_communities', JSON.stringify(data.communities))
     }
-  }, [])
+  } catch (error) {
+    console.error('Failed to fetch communities:', error)
+  } finally {
+    setLoading(false)
+  }
+}
 
-  const fetchCommunities = async () => {
-    try {
-      const response = await fetch('/api/communities')
+const fetchMyCommunities = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const response = await fetch('/api/communities/my-communities', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    if (response.ok) {
       const data = await response.json()
-      
-      if (response.ok) {
-        setCommunities(data.communities)
-      }
-    } catch (error) {
-      console.error('Failed to fetch communities:', error)
-    } finally {
-      setLoading(false)
+      const ids = data.communityIds.map(id => String(id))
+      setMyCommunitiesIds(ids)
+      // Cache the data
+      localStorage.setItem('cached_my_community_ids', JSON.stringify(ids))
     }
+  } catch (error) {
+    console.error('Failed to fetch my communities:', error)
   }
-
-  const fetchMyCommunities = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) return
-
-      const response = await fetch('/api/communities/my-communities', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('My communities:', data.communityIds)
-        // Ensure all IDs are strings
-        setMyCommunitiesIds(data.communityIds.map(id => String(id)))
-      }
-    } catch (error) {
-      console.error('Failed to fetch my communities:', error)
-    }
-  }
+}
 
   const handleJoinCommunity = async (communityId) => {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        router.push('/login')
-        return
-      }
-
-      setJoiningId(communityId)
-
-      const response = await fetch(`/api/communities/${communityId}/join`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (response.ok) {
-        // Update the state immediately to reflect the join
-        setMyCommunitiesIds(prev => [...prev, String(communityId)])
-        
-        // Navigate to the community
-        router.push(`/communities/${communityId}`)
-      } else {
-        const data = await response.json()
-        alert(data.error || 'Failed to join community')
-      }
-    } catch (error) {
-      console.error('Failed to join:', error)
-      alert('Something went wrong')
-    } finally {
-      setJoiningId(null)
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+      return
     }
+
+    setJoiningId(communityId)
+
+    const response = await fetch(`/api/communities/${communityId}/join`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    if (response.ok) {
+      const newIds = [...myCommunitiesIds, String(communityId)]
+      setMyCommunitiesIds(newIds)
+      // Update cache
+      localStorage.setItem('cached_my_community_ids', JSON.stringify(newIds))
+      
+      router.push(`/communities/${communityId}`)
+    } else {
+      const data = await response.json()
+      alert(data.error || 'Failed to join community')
+    }
+  } catch (error) {
+    console.error('Failed to join:', error)
+    alert('Something went wrong')
+  } finally {
+    setJoiningId(null)
   }
+}
 
   const handleViewCommunity = (communityId) => {
     router.push(`/communities/${communityId}`)

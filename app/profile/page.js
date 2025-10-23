@@ -17,55 +17,61 @@ export default function ProfilePage() {
     location: ''
   })
 
-  useEffect(() => {
-    // Check if user is logged in
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        router.push('/login')
-        return
-      }
-
-      const userData = JSON.parse(localStorage.getItem('user') || '{}')
-      setUser(userData)
-      setEditData({
-        name: userData.name || '',
-        phone: userData.phone || '',
-        location: userData.location || ''
-      })
-
-      // Load user's listings
-      loadMyListings()
+useEffect(() => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+      return
     }
-  }, [router])
 
-  const loadMyListings = async () => {
-    try {
-        const token = localStorage.getItem('token')
-        const user = JSON.parse(localStorage.getItem('user') || '{}')
-        
-        if (!token || !user.email) {
-        setLoading(false)
-        return
-        }
+    const userData = JSON.parse(localStorage.getItem('user') || '{}')
+    setUser(userData)
+    setEditData({
+      name: userData.name || '',
+      phone: userData.phone || '',
+      location: userData.location || ''
+    })
 
-        // Fetch listings by user email (since we're storing sellerEmail)
-        const response = await fetch(`/api/listings?userEmail=${user.email}`)
-        const data = await response.json()
-        
-        if (response.ok) {
-        // Filter listings by current user's email
-        const userListings = data.listings.filter(
-            listing => listing.sellerEmail === user.email
-        )
-        setMyListings(userListings)
-        }
-    } catch (error) {
-        console.error('Error loading listings:', error)
-    } finally {
-        setLoading(false)
+    // Load from cache immediately
+    const cachedListings = localStorage.getItem('cached_my_listings')
+    if (cachedListings) {
+      setMyListings(JSON.parse(cachedListings))
+      setLoading(false)
     }
+
+    // Fetch fresh data in background
+    loadMyListings()
+  }
+}, [router])
+
+const loadMyListings = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    
+    if (!token || !user.email) {
+      setLoading(false)
+      return
     }
+
+    const response = await fetch(`/api/listings?userEmail=${user.email}`)
+    const data = await response.json()
+    
+    if (response.ok) {
+      const userListings = data.listings.filter(
+        listing => listing.sellerEmail === user.email
+      )
+      setMyListings(userListings)
+      // Cache the data
+      localStorage.setItem('cached_my_listings', JSON.stringify(userListings))
+    }
+  } catch (error) {
+    console.error('Error loading listings:', error)
+  } finally {
+    setLoading(false)
+  }
+}
 
   const handleEditProfile = () => {
     setEditMode(true)
@@ -103,6 +109,7 @@ export default function ProfilePage() {
         ? 'Great! Glad you found it! 🎉'
         : 'Item successfully returned to owner! 🎉'
       alert(successMessage)
+      localStorage.removeItem('cached_my_listings')
       loadMyListings()
     }
   } catch (error) {
@@ -135,43 +142,53 @@ export default function ProfilePage() {
 
 
   const handleDeleteListing = async (listingId) => {
-    if (!confirm('Are you sure you want to delete this listing?')) {
-      return
-    }
-
-    try {
-      const token = localStorage.getItem('token')
-      
-      const response = await fetch(`/api/listings/${listingId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (response.ok) {
-        // Remove from local state
-        setMyListings(myListings.filter(l => l._id !== listingId))
-        alert('Listing deleted successfully!')
-      } else {
-        const data = await response.json()
-        alert(data.error || 'Failed to delete listing')
-      }
-    } catch (error) {
-      console.error('Delete error:', error)
-      alert('Failed to delete listing')
-    }
+  if (!confirm('Are you sure you want to delete this listing?')) {
+    return
   }
+
+  try {
+    const token = localStorage.getItem('token')
+    
+    const response = await fetch(`/api/listings/${listingId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    if (response.ok) {
+      const updated = myListings.filter(l => l._id !== listingId)
+      setMyListings(updated)
+      // Update cache
+      localStorage.setItem('cached_my_listings', JSON.stringify(updated))
+      alert('Listing deleted successfully!')
+    } else {
+      const data = await response.json()
+      alert(data.error || 'Failed to delete listing')
+    }
+  } catch (error) {
+    console.error('Delete error:', error)
+    alert('Failed to delete listing')
+  }
+}
 
   const handleLogout = () => {
-    if (confirm('Are you sure you want to logout?')) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-      }
-      router.push('/login')
+  if (confirm('Are you sure you want to logout?')) {
+    if (typeof window !== 'undefined') {
+      // Clear auth
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      
+      // Clear all caches
+      localStorage.removeItem('cached_subjects')
+      localStorage.removeItem('cached_stats')
+      localStorage.removeItem('cached_communities')
+      localStorage.removeItem('cached_my_community_ids')
+      localStorage.removeItem('cached_my_listings')
     }
+    router.push('/login')
   }
+}
 
   const getCategoryEmoji = (category) => {
     const emojiMap = {
@@ -248,6 +265,7 @@ const handleMarkAsSold = async (listingId) => {
         ? 'Great! Glad you found it! 🎉'
         : 'Item successfully returned to owner! 🎉'
       alert(successMessage)
+      localStorage.removeItem('cached_my_listings')
       loadMyListings()
     }
   } catch (error) {

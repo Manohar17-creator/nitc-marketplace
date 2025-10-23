@@ -21,10 +21,22 @@ export default function AttendancePage() {
       router.push('/login')
       return
     }
+    const cachedSubjects = localStorage.getItem('cached_subjects')
+    const cachedStats = localStorage.getItem('cached_stats')
+    
+    if (cachedSubjects) {
+        setSubjects(JSON.parse(cachedSubjects))
+        setLoading(false)
+    }
+    if (cachedStats) {
+        setStats(JSON.parse(cachedStats))
+    }
+
+    // Fetch fresh data in background
     fetchSubjects()
     fetchStats()
     fetchTodayAttendance()
-  }, [router])
+    }, [router])
 
   useEffect(() => {
     if (selectedDate) {
@@ -32,33 +44,47 @@ export default function AttendancePage() {
     }
   }, [selectedDate])
 
-  const fetchSubjects = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/attendance/subjects', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      const data = await response.json()
-      if (response.ok) setSubjects(data.subjects)
-    } catch (error) {
-      console.error('Failed to fetch subjects:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+const fetchSubjects = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await fetch('/api/attendance/subjects', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
 
-  const fetchStats = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/attendance/stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      const data = await response.json()
-      if (response.ok) setStats(data)
-    } catch (error) {
-      console.error('Failed to fetch stats:', error)
+    const data = await response.json()
+    if (response.ok) {
+      setSubjects(data.subjects)
+      // Cache the data
+      localStorage.setItem('cached_subjects', JSON.stringify(data.subjects))
     }
+  } catch (error) {
+    console.error('Failed to fetch subjects:', error)
+  } finally {
+    setLoading(false)
   }
+}
+
+const fetchStats = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await fetch('/api/attendance/stats', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    const data = await response.json()
+    if (response.ok) {
+      setStats(data)
+      // Cache the data
+      localStorage.setItem('cached_stats', JSON.stringify(data))
+    }
+  } catch (error) {
+    console.error('Failed to fetch stats:', error)
+  }
+}
 
   const fetchTodayAttendance = async () => {
     try {
@@ -133,33 +159,39 @@ export default function AttendancePage() {
   }
 
   const handleSaveAttendance = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      const attendance = subjects.map(subject => ({
-        subjectId: subject._id,
-        status: todayAttendance[subject._id]?.status || 'noclass',
-        reason: todayAttendance[subject._id]?.reason || null
-      }))
+  try {
+    const token = localStorage.getItem('token')
+    
+    const attendance = subjects.map(subject => ({
+      subjectId: subject._id,
+      status: todayAttendance[subject._id]?.status || 'noclass',
+      reason: todayAttendance[subject._id]?.reason || null
+    }))
 
-      const response = await fetch('/api/attendance/mark', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ date: selectedDate, attendance })
+    const response = await fetch('/api/attendance/mark', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        date: selectedDate,
+        attendance
       })
+    })
 
-      if (response.ok) {
-        alert('Attendance saved! ✅')
-        await fetchStats()
-      } else {
-        alert('Failed to save attendance')
-      }
-    } catch (error) {
-      console.error('Failed to save attendance:', error)
+    if (response.ok) {
+      alert('Attendance saved! ✅')
+      // Clear cache to force refresh
+      localStorage.removeItem('cached_stats')
+      await fetchStats()
+    } else {
+      alert('Failed to save attendance')
     }
+  } catch (error) {
+    console.error('Failed to save attendance:', error)
   }
+}
 
   const getPercentageColor = (percentage) => {
     if (percentage >= 75) return '#10b981'
