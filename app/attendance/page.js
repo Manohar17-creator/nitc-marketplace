@@ -195,26 +195,29 @@ export default function AttendancePage() {
   return (
     <div className="bg-gray-50 overflow-x-hidden flex flex-col pb-nav-safe">
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg safe-top">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
-            <div className="flex items-center gap-3">
-              <Calendar size={28} />
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold">Attendance</h1>
-                <p className="text-purple-100 text-xs sm:text-sm">Track your classes</p>
-              </div>
-            </div>
-            <button
-                onClick={() => setShowAddSubject(true)}
-                className="p-2 sm:p-3 bg-blue-500 hover:bg-blue-600 rounded-full transition-colors"
-            >
-                <Plus size={22} className="text-white" />
-            </button>
-          </div>
-        </div>
+      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
+  <div className="max-w-4xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
+    
+    {/* Left Section */}
+    <div className="flex items-center gap-3">
+      <Calendar size={24} />
+      <div className="leading-tight">
+        <h1 className="text-lg sm:text-xl font-semibold">Attendance</h1>
+        <p className="text-blue-100 text-xs sm:text-sm">Track your classes</p>
       </div>
+    </div>
 
+    {/* Add Subject Button */}
+    <button
+      onClick={() => setShowAddSubject(true)}
+      className="p-2 sm:p-3 bg-blue-500 hover:bg-blue-600 rounded-full transition-all active:scale-95"
+    >
+      <Plus size={20} className="text-white" />
+    </button>
+  </div>
+</div>
+
+<main className="pt-[72px] pb-nav-safe px-4 bg-gray-50 min-h-screen">
       {/* Main Content */}
       <div className="max-w-4xl mx-auto p-4 flex-1 w-full">
         {/* Date Selector */}
@@ -422,6 +425,7 @@ export default function AttendancePage() {
           </div>
         </div>
       )}
+      </main>
     </div>
   )
 }

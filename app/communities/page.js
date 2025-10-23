@@ -124,63 +124,62 @@ const toggleSearch = () => setIsSearchVisible(prev => !prev)
   return (
     <div className="overflow-x-hidden bg-gray-50 flex flex-col">
       {/* Header */}
-      {/* Header */}
-<div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg safe-top">
-  <div className="max-w-6xl mx-auto">
-    <div className="flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
-      {!isSearchVisible ? (
-        <>
-          {/* Left Side - Title */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <Users size={26} className="text-white" />
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold">Communities</h1>
-              <p className="text-blue-100 text-xs sm:text-sm">
-                {myCommunitiesIds.length} joined
-              </p>
-            </div>
-          </div>
-
-          {/* Right Side - Search Icon */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleSearch}
-              className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
-            >
-              <Search size={22} />
-            </button>
-          </div>
-        </>
-      ) : (
-        /* Expanded Search State */
-        <div className="flex items-center gap-2 w-full">
-          <button
-            onClick={toggleSearch}
-            className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
-          >
-            <X size={22} />
-          </button>
-
-          <div className="flex-1 relative">
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300"
-              size={18}
-            />
-            <input
-              id="search-input"
-              type="text"
-              placeholder="Search communities..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
-              className="w-full pl-10 pr-4 py-2 rounded-lg text-sm bg-blue-500/50 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
-            />
+<div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
+  <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px] transition-all duration-300">
+    
+    {/* Default (Collapsed) Header */}
+    {!isSearchVisible ? (
+      <>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <Users size={24} className="text-white" />
+          <div className="leading-tight">
+            <h1 className="text-lg sm:text-xl font-semibold">Communities</h1>
+            <p className="text-blue-100 text-xs sm:text-sm">
+              {myCommunitiesIds.length} joined
+            </p>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Search Icon */}
+        <button
+          onClick={toggleSearch}
+          className="p-2 hover:bg-blue-700 active:bg-blue-800 rounded-full transition-all active:scale-95"
+        >
+          <Search size={20} className="text-white" />
+        </button>
+      </>
+    ) : (
+      /* Expanded Search Mode */
+      <div className="flex items-center gap-2 w-full transition-all duration-300">
+        <button
+          onClick={toggleSearch}
+          className="p-2 hover:bg-blue-700 active:bg-blue-800 rounded-full transition-all active:scale-95"
+        >
+          <X size={20} className="text-white" />
+        </button>
+
+        <div className="flex-1 relative">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-200"
+            size={16}
+          />
+          <input
+            id="search-input"
+            type="text"
+            placeholder="Search communities..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus
+            className="w-full pl-10 pr-4 py-2 rounded-lg text-sm bg-blue-500/40 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          />
+        </div>
+      </div>
+    )}
   </div>
 </div>
+
+<main className="pt-[72px] pb-nav-safe px-4 bg-gray-50 min-h-screen">
+
 
 
       {/* Communities List */}
@@ -264,6 +263,8 @@ const toggleSearch = () => setIsSearchVisible(prev => !prev)
         <span>Create</span>
     </button>
     </Link>
+      {/* page content */}
+</main>
     </div>
   )
 }
