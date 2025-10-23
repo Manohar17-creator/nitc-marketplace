@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, ChevronRight, Search } from 'lucide-react'
+import { Users, ChevronRight, Search, Plus } from 'lucide-react'
 import Link from 'next/link'
 
 export default function CommunitiesPage() {
@@ -132,12 +132,6 @@ export default function CommunitiesPage() {
                 </p>
               </div>
             </div>
-            <Link 
-              href="/"
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors text-sm font-medium"
-            >
-              Home
-            </Link>
           </div>
 
           {/* Search */}
@@ -221,6 +215,20 @@ export default function CommunitiesPage() {
           </div>
         )}
       </div>
+
+      {/* Create Community Button - Fixed position above navbar */}
+    <Link href="/communities/request">
+    <button 
+        className="fixed bg-gradient-to-r from-green-600 to-green-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 font-semibold flex items-center gap-2 px-6 py-4 z-40"
+        style={{
+        bottom: `calc(72px + env(safe-area-inset-bottom))`,
+        right: '16px'
+        }}
+    >
+        <Plus size={20} />
+        <span>Create</span>
+    </button>
+    </Link>
     </div>
   )
 }

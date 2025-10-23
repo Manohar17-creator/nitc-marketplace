@@ -35,7 +35,6 @@ export default function PostListing() {
     { id: 'housing', name: 'PG/Rooms' },
     { id: 'events', name: 'Event Tickets' },
     { id: 'misc', name: 'Miscellaneous' },
-    { id: 'lost-found', name: 'Lost & Found'}
   ]
 
   const handleChange = (e) => {

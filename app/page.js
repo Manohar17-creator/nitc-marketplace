@@ -1,7 +1,7 @@
 // app/page.js
 'use client'
 import { useState, useEffect } from 'react'
-import { Search, Plus, User, Home, Tag, Book, Laptop, Ticket, Car, Building, PartyPopper} from 'lucide-react'
+import { Search, Plus, User, Home, Tag, Book, Laptop, Ticket, Car, Building, PartyPopper,X} from 'lucide-react'
 import Link from 'next/link'
 import ListingCard from '@/components/ListingCard'
 
@@ -11,6 +11,7 @@ export default function HomePage() {
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
   const [isSearchVisible, setIsSearchVisible] = useState(false)
+  const [cachedListings, setCachedListings] = useState({})
 
   const categories = [
     { id: 'all', name: 'All', icon: Home, color: 'bg-blue-500' },
@@ -26,6 +27,12 @@ export default function HomePage() {
 
   // Fetch listings on mount and when filters change
   useEffect(() => {
+    // Check cache first for instant display
+    const cacheKey = `${selectedCategory}-${searchQuery}`
+    if (cachedListings[cacheKey]) {
+      setListings(cachedListings[cacheKey])
+    }
+    
     fetchListings()
   }, [selectedCategory, searchQuery])
 
@@ -41,6 +48,9 @@ export default function HomePage() {
       
       if (response.ok) {
         setListings(data.listings)
+        // Cache the data
+        const cacheKey = `${selectedCategory}-${searchQuery}`
+        setCachedListings(prev => ({ ...prev, [cacheKey]: data.listings }))
       }
     } catch (error) {
       console.error('Failed to fetch listings:', error)
@@ -50,7 +60,13 @@ export default function HomePage() {
   }
 
   const handleSearch = (e) => {
-    setSearchQuery(e.target.value)
+    const value = e.target.value
+    setSearchQuery(value)
+    
+    // If search is cleared, reset to show all
+    if (value === '') {
+      setSearchQuery('')
+    }
   }
 
   const toggleSearch = () => {
@@ -65,14 +81,14 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header - Better mobile spacing */}
+      {/* Header - Fixed height to prevent navbar jump */}
       <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg safe-top">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between gap-4 h-[40px] sm:h-[48px]">
+          <div className="flex items-center justify-between gap-4 h-[48px]">
             {!isSearchVisible ? (
               <>
                 <div className="flex-shrink-0">
-                  <h1 className="text-xl sm:text-2xl font-bold">NITC Marketplace</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold">NITC Marketplace</h1>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -89,7 +105,7 @@ export default function HomePage() {
                   onClick={toggleSearch}
                   className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
                 >
-                  <Search size={18} />
+                  <X size={22} />
                 </button>
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />

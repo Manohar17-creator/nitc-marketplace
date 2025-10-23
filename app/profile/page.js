@@ -281,12 +281,6 @@ const handleMarkAsSold = async (listingId) => {
               <h1 className="text-2xl font-bold">My Profile</h1>
               <p className="text-blue-100 text-sm">Manage your account and listings</p>
             </div>
-            <Link 
-              href="/"
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
-            >
-              Home
-            </Link>
           </div>
         </div>
       </div>
@@ -348,100 +342,105 @@ const handleMarkAsSold = async (listingId) => {
               </div>
             ) : (
               <div className="space-y-4">
-                {myListings.map(listing => (
-                  <div
-                    key={listing._id}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+  {myListings.map(listing => (
+    <div
+      key={listing._id}
+      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+    >
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Emoji/Icon */}
+        <div className="text-4xl flex-shrink-0 flex justify-center sm:justify-start">
+          {getCategoryEmoji(listing.category)}
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+          {/* Title + Status */}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
+            <div className="text-center sm:text-left">
+              <h3 className="font-semibold text-gray-900 text-lg">{listing.title}</h3>
+              <p className="text-gray-600 text-sm line-clamp-2">{listing.description}</p>
+            </div>
+
+            <span
+              className={`mt-2 sm:mt-0 self-center sm:self-auto px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                listing.status === 'active'
+                  ? 'bg-green-100 text-green-700'
+                  : listing.status === 'reunited'
+                  ? 'bg-purple-100 text-purple-700'
+                  : listing.status === 'sold'
+                  ? 'bg-gray-100 text-gray-700'
+                  : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              {listing.status === 'reunited'
+                ? listing.lostFoundType === 'lost'
+                  ? '✓ Found'
+                  : '✓ Claimed'
+                : listing.status === 'sold'
+                ? 'Sold'
+                : 'Active'}
+            </span>
+          </div>
+
+          {/* Price + Date */}
+          <div className="mt-3 text-center sm:text-left">
+            <span className="text-xl font-bold text-green-600">
+              ₹{listing.price.toLocaleString()}
+            </span>
+            <span className="text-sm text-gray-500 ml-2 block sm:inline">
+              Posted {formatDate(listing.createdAt)}
+            </span>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex flex-wrap justify-center sm:justify-end gap-2 mt-4">
+            <Link
+              href={`/listing/${listing._id}`}
+              className="px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
+            >
+              View
+            </Link>
+            <Link
+              href={`/edit/${listing._id}`}
+              className="px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors text-sm font-medium"
+            >
+              Edit
+            </Link>
+
+            {listing.status === 'active' && (
+              <>
+                {listing.category === 'lost-found' ? (
+                  <button
+                    onClick={() => handleMarkAsReunited(listing._id)}
+                    className="px-3 py-2 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-sm font-medium"
                   >
-                    <div className="flex gap-4">
-                      <div className="text-4xl flex-shrink-0">
-                        {getCategoryEmoji(listing.category)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="font-semibold text-gray-900 text-lg">
-                              {listing.title}
-                            </h3>
-                            <p className="text-gray-600 text-sm line-clamp-2">
-                              {listing.description}
-                            </p>
-                          </div>
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                            listing.status === 'active'
-                              ? 'bg-green-100 text-green-700'
-                              : listing.status === 'reunited'
-                              ? 'bg-purple-100 text-purple-700'
-                              : listing.status === 'sold'
-                              ? 'bg-gray-100 text-gray-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
-                            {listing.status === 'reunited' 
-                              ? (listing.lostFoundType === 'lost' ? '✓ Found' : '✓ Claimed')
-                              : listing.status === 'sold'
-                              ? 'Sold'
-                              : 'Active'}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between mt-3">
-                          <div>
-                            <span className="text-xl font-bold text-green-600">
-                              ₹{listing.price.toLocaleString()}
-                            </span>
-                            <span className="text-sm text-gray-500 ml-3">
-                              Posted {formatDate(listing.createdAt)}
-                            </span>
-                          </div>
-                          
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            <Link
-                                href={`/listing/${listing._id}`}
-                                className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
-                            >
-                                View
-                            </Link>
-                            <Link
-                                href={`/edit/${listing._id}`}
-                                className="px-4 py-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors text-sm font-medium"
-                            >
-                                Edit
-                            </Link>
+                    {listing.lostFoundType === 'lost' ? '✓ Found' : '✓ Claimed'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleMarkAsSold(listing._id)}
+                    className="px-3 py-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Sold
+                  </button>
+                )}
+              </>
+            )}
 
-                            {/* Different button for Lost & Found vs Regular Items */}
-                            {listing.category === 'lost-found' ? (
-                              listing.status === 'active' && (
-                                <button
-                                  onClick={() => handleMarkAsReunited(listing._id)}
-                                  className="flex-shrink-0 px-3 py-2 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
-                                >
-                                  {listing.lostFoundType === 'lost' ? '✓ Found It' : '✓ Claimed'}
-                                </button>
-                              )
-                            ) : (
-                              listing.status === 'active' && (
-                                <button
-                                  onClick={() => handleMarkAsSold(listing._id)}
-                                  className="flex-shrink-0 px-3 py-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
-                                >
-                                  Mark Sold
-                                </button>
-                              )
-                            )}
+            <button
+              onClick={() => handleDeleteListing(listing._id)}
+              className="px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-sm font-medium"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
 
-                            <button
-                              onClick={() => handleDeleteListing(listing._id)}
-                              className="flex-1 min-w-[70px] px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-sm font-medium"
-                            >
-                              Delete
-                            </button>
-                            </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
             )}
           </div>
         </div>
