@@ -3,9 +3,10 @@ import clientPromise from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
-// GET - Fetch all subjects for user
-export async function GET(request) {
+// GET - Fetch attendance records for a specific subject
+export async function GET(request, context) {
   try {
+    const { subjectId } = await context.params
     const token = request.headers.get('authorization')?.split(' ')[1]
     
     if (!token) {
@@ -20,26 +21,48 @@ export async function GET(request) {
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
-    const subjects = await db
-      .collection('subjects')
-      .find({ userId: new ObjectId(decoded.userId) })
-      .sort({ createdAt: 1 })
+    // ✅ Fetch subject details
+    const subject = await db.collection('subjects').findOne({
+      _id: new ObjectId(subjectId),
+      userId: new ObjectId(decoded.userId)
+    })
+
+    if (!subject) {
+      return NextResponse.json({ error: 'Subject not found' }, { status: 404 })
+    }
+
+    // ✅ Fetch attendance for this subject
+    const attendance = await db
+      .collection('attendance')
+      .find({
+        userId: new ObjectId(decoded.userId),
+        subjectId: new ObjectId(subjectId)
+      })
+      .sort({ date: -1 })
       .toArray()
 
-    return NextResponse.json({ subjects })
+    // ✅ Return both subject and attendance
+    return NextResponse.json({
+      subject: {
+        _id: subject._id,
+        name: subject.name,
+      },
+      attendance,
+    })
 
   } catch (error) {
-    console.error('Get subjects error:', error)
+    console.error('Get subject attendance error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch subjects' },
+      { error: 'Failed to fetch attendance' },
       { status: 500 }
     )
   }
 }
 
-// POST - Add new subject
-export async function POST(request) {
+// DELETE - Delete subject
+export async function DELETE(request, context) {
   try {
+    const { subjectId } = await context.params
     const token = request.headers.get('authorization')?.split(' ')[1]
     
     if (!token) {
@@ -51,46 +74,27 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    const { name } = await request.json()
-
-    if (!name || !name.trim()) {
-      return NextResponse.json(
-        { error: 'Subject name is required' },
-        { status: 400 }
-      )
-    }
-
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
-    // Check if subject already exists
-    const existing = await db.collection('subjects').findOne({
+    // Delete subject
+    await db.collection('subjects').deleteOne({
+      _id: new ObjectId(subjectId),
+      userId: new ObjectId(decoded.userId)
+    })
+
+    // Delete all attendance records for this subject
+    await db.collection('attendance').deleteMany({
       userId: new ObjectId(decoded.userId),
-      name: name.trim()
+      subjectId: new ObjectId(subjectId)
     })
 
-    if (existing) {
-      return NextResponse.json(
-        { error: 'Subject already exists' },
-        { status: 400 }
-      )
-    }
-
-    const result = await db.collection('subjects').insertOne({
-      userId: new ObjectId(decoded.userId),
-      name: name.trim(),
-      createdAt: new Date()
-    })
-
-    return NextResponse.json({
-      message: 'Subject added',
-      subjectId: result.insertedId
-    })
+    return NextResponse.json({ message: 'Subject deleted' })
 
   } catch (error) {
-    console.error('Add subject error:', error)
+    console.error('Delete subject error:', error)
     return NextResponse.json(
-      { error: 'Failed to add subject' },
+      { error: 'Failed to delete subject' },
       { status: 500 }
     )
   }

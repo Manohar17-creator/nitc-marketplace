@@ -45,53 +45,42 @@ export default function PostDetailPage({ params }) {
     }
   }
 
-  const fetchComments = async (id) => {
-    try {
-      const response = await fetch(`/api/communities/posts/${id}/comments`)
-      const data = await response.json()
-      
-      if (response.ok) {
-        setComments(data.comments)
-      }
-    } catch (error) {
-      console.error('Failed to fetch comments:', error)
-    }
+const fetchComments = async (id) => {
+  try {
+    const response = await fetch(`/api/communities/posts/${id}/comments`)
+    const data = await response.json()
+    if (response.ok) setComments(data.comments)
+  } catch (err) {
+    console.error('Fetch comments failed:', err)
   }
+}
 
   const handleSubmitComment = async (e) => {
-    e.preventDefault()
-    
-    if (!newComment.trim()) return
+  e.preventDefault()
+  if (!newComment.trim()) return
 
-    setSubmitting(true)
-
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        router.push('/login')
-        return
-      }
-
-      const response = await fetch(`/api/communities/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ content: newComment })
-      })
-
-      if (response.ok) {
-        setNewComment('')
-        await fetchComments(postId)
-        await fetchPost(postId) // Refresh to update comment count
-      }
-    } catch (error) {
-      console.error('Failed to post comment:', error)
-    } finally {
-      setSubmitting(false)
-    }
+  const token = localStorage.getItem('token')
+  if (!token) {
+    router.push('/login')
+    return
   }
+
+  const res = await fetch(`/api/communities/posts/${postId}/comments`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ content: newComment })
+  })
+
+  if (res.ok) {
+    setNewComment('')
+    await fetchComments(postId)
+  } else {
+    console.error('Failed to post comment', await res.text())
+  }
+}
 
   const handleDeleteComment = async (commentId) => {
     if (!confirm('Delete this comment?')) return

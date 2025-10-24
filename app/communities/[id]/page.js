@@ -289,7 +289,7 @@ export default function CommunityDetailPage({ params }) {
       {/* Header */}
 {/* Minimal Unified Header (with dropdown) */}
 <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
-  <div className="max-w-6xl mx-auto px-3 py-2 sm:px-4 sm:py-3">
+  <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px] transition-all duration-300">
     <div className="flex items-center justify-between gap-2">
       {/* Left: Back + Community Name (single line, truncated) */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
