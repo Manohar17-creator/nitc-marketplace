@@ -397,7 +397,7 @@ export default function CommunityDetailPage({ params }) {
         {/* Feed/Jobs/Portfolio Tab */}
         {activeTab !== 'members' && (
           <div className="space-y-4">
-            {posts.length === 0 ? (
+            {!posts?.length ? (
               <div className="text-center py-12 bg-white rounded-lg">
                 {activeTab === 'feed' && (
                   <>
@@ -505,7 +505,7 @@ export default function CommunityDetailPage({ params }) {
         {/* Members Tab */}
         {activeTab === 'members' && (
           <div className="space-y-3">
-            {members.length === 0 ? (
+            {!members?.length ? (
               <div className="text-center py-12 bg-white rounded-lg">
                 <UsersIcon size={48} className="mx-auto text-gray-300 mb-4" />
                 <p className="text-gray-600">No members yet</p>

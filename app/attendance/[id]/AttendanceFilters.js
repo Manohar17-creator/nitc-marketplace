@@ -27,6 +27,7 @@ export default function AttendanceFilters({ filters, onFilterChange }) {
         showHeader ? 'translate-y-0' : '-translate-y-full'
       }`}
     >
+      <div className="space-y-3 overflow-x-hidden px-2">
       <div className="max-w-4xl mx-auto px-4 py-3 flex flex-wrap gap-2 items-center justify-between">
         {/* Status Filters */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
@@ -41,19 +42,47 @@ export default function AttendanceFilters({ filters, onFilterChange }) {
           </button>
         </div>
 
-        {/* Reason Filters */}
-        <div className="flex items-center gap-2">
-          <span className="text-gray-600 text-sm font-medium">Reason:</span>
-          <button className="px-3 py-1.5 bg-purple-600 text-white rounded-full text-sm font-medium">
-            All
-          </button>
-          <button className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium flex items-center gap-1">
-            💼 Placement (1)
-          </button>
-          <button className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium flex items-center gap-1">
-            🏥 Medical (0)
-          </button>
-        </div>
+        {/* Reason Filters - Scrollable Row */}
+<div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1 snap-x snap-mandatory">
+  <span className="flex-shrink-0 font-medium text-gray-700">Reason:</span>
+  
+  <div className="flex items-center gap-2 flex-nowrap">
+    <button
+      onClick={() => setFilterReason('all')}
+      className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+        filterReason === 'all'
+          ? 'bg-purple-600 text-white shadow-md scale-105'
+          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+      }`}
+    >
+      All
+    </button>
+
+    <button
+      onClick={() => setFilterReason('placement')}
+      className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+        filterReason === 'placement'
+          ? 'bg-gray-200 text-gray-900 border border-gray-300'
+          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+      }`}
+    >
+      💼 Placement ({reasonCounts.placement})
+    </button>
+
+    <button
+      onClick={() => setFilterReason('medical')}
+      className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+        filterReason === 'medical'
+          ? 'bg-gray-200 text-gray-900 border border-gray-300'
+          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+      }`}
+    >
+      🏥 Medical ({reasonCounts.medical})
+    </button>
+  </div>
+</div>
+
+      </div>
       </div>
     </div>
   )
