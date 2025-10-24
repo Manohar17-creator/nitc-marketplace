@@ -288,38 +288,37 @@ export default function CommunityDetailPage({ params }) {
     <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col pb-nav-safe">
       {/* Header */}
 {/* Minimal Unified Header (with dropdown) */}
-<div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg safe-top">
-  <div className="max-w-6xl mx-auto">
-    <div className="flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
-      <div className="flex items-center gap-3">
+<div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
+  <div className="max-w-6xl mx-auto px-3 py-2 sm:px-4 sm:py-3">
+    <div className="flex items-center justify-between gap-2">
+      {/* Left: Back + Community Name (single line, truncated) */}
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <button
           onClick={() => router.push('/communities')}
-          className="flex items-center gap-1 hover:opacity-80 active:scale-95 transition"
+          className="flex-shrink-0 hover:opacity-80 active:scale-95 transition"
         >
           <ChevronLeft size={22} />
         </button>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold">{community.name}</h1>
-          <p className="text-blue-100 text-xs sm:text-sm">
-            {community.memberCount} members • {community.postCount} posts
-          </p>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-base sm:text-lg font-bold truncate">
+            {community.name.length > 25 ? `${community.name.substring(0, 25)}...` : community.name}
+          </h1>
         </div>
       </div>
 
-      {/* Right: Add Post + More Menu */}
-      <div className="flex items-center gap-2">
+      {/* Right: Actions */}
+      <div className="flex items-center gap-1 flex-shrink-0">
         <button
           onClick={() => setShowPostModal(true)}
-          className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+          className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
         >
-          <Plus size={22} />
+          <Plus size={20} />
         </button>
 
-        {/* 3-dot menu */}
         <div className="relative">
           <button
             onClick={() => setShowMenu((prev) => !prev)}
-            className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+            className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors text-lg leading-none"
           >
             ⋯
           </button>
@@ -334,7 +333,7 @@ export default function CommunityDetailPage({ params }) {
                 className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
               >
                 <LogOut size={16} />
-                <span>Leave Community</span>
+                <span>Leave</span>
               </button>
             </div>
           )}
@@ -349,7 +348,8 @@ export default function CommunityDetailPage({ params }) {
 
 
       {/* Tabs */}
-      <div className="bg-white border-b sticky top-[120px] sm:top-[128px] z-10">
+      {/* Tabs */}
+<div className="bg-white border-b sticky top-[48px] sm:top-[52px] z-10">
         <div className="max-w-4xl mx-auto flex overflow-x-auto scrollbar-hide">
           <button
             onClick={() => handleTabChange('feed')}
@@ -395,7 +395,8 @@ export default function CommunityDetailPage({ params }) {
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto p-4 flex-1 w-full">
+      {/* Content */}
+<div className="max-w-4xl mx-auto p-4 flex-1 w-full pt-[100px] sm:pt-[110px]">
         {/* Feed/Jobs/Portfolio Tab */}
         {activeTab !== 'members' && (
           <div className="space-y-4">

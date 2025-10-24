@@ -103,7 +103,7 @@ export default function SubjectAttendancePage() {
   }
 
   return (
-    <div className="overflow-x-hidden bg-gray-50">
+  <div className="min-h-screen bg-gray-50 pb-nav-safe">
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
   <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
@@ -144,11 +144,10 @@ export default function SubjectAttendancePage() {
 />
 
 
-
-<div className="h-4 sm:h-6"></div>
+<div className="pt-[180px] sm:pt-[200px]"></div>
 
       {/* Attendance Records */}
-      <div className="max-w-4xl mx-auto p-4 flex-1 w-full">
+      <div className="max-w-4xl mx-auto p-4 flex-1 w-full pb-20">
         {filteredAttendance.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg">
             <Calendar size={48} className="mx-auto text-gray-300 mb-4" />
