@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Calendar, X, Filter } from 'lucide-react'
+import AttendanceFilters from './AttendanceFilters'
 
 export default function SubjectAttendancePage() {
   const router = useRouter()
@@ -102,10 +103,10 @@ export default function SubjectAttendancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-nav-safe">
+    <div className="overflow-x-hidden bg-gray-50">
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg safe-top">
-  <div className="max-w-6xl mx-auto">
+      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
+  <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
     <div className="flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
       {/* Left: Back + Subject Name */}
       <div className="flex items-center gap-3">
@@ -129,105 +130,9 @@ export default function SubjectAttendancePage() {
   </div>
 </div>
 
+<AttendanceFilters />
 
-      {/* Filters */}
-      <div className="bg-white border-b sticky top-[96px] z-10 p-3 space-y-3">
-        <div className="max-w-4xl mx-auto">
-          {/* Status Filter */}
-          <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2">
-            <Filter size={16} className="text-gray-600" />
-            <button
-              onClick={() => setFilterStatus('all')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                filterStatus === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All ({detailStats.total})
-            </button>
-            <button
-              onClick={() => setFilterStatus('present')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                filterStatus === 'present'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Present ({detailStats.present})
-            </button>
-            <button
-              onClick={() => setFilterStatus('absent')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                filterStatus === 'absent'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Absent ({detailStats.absent})
-            </button>
-          </div>
-
-          {/* Reason Filter */}
-          {(filterStatus === 'absent' || filterStatus === 'all') && detailStats.absent > 0 && (
-            <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2">
-              <span className="font-medium text-gray-700 text-sm flex-shrink-0">Reason:</span>
-              <button
-                onClick={() => setFilterReason('all')}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium flex-shrink-0 ${
-                  filterReason === 'all'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setFilterReason('placement')}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium flex-shrink-0 ${
-                  filterReason === 'placement'
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                💼 Placement ({reasonCounts.placement})
-              </button>
-              <button
-                onClick={() => setFilterReason('medical')}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium flex-shrink-0 ${
-                  filterReason === 'medical'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                🏥 Medical ({reasonCounts.medical})
-              </button>
-              <button
-                onClick={() => setFilterReason('none')}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium flex-shrink-0 ${
-                  filterReason === 'none'
-                    ? 'bg-gray-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                None ({reasonCounts.none})
-              </button>
-            </div>
-          )}
-
-          {/* Sort Toggle */}
-          <div className="flex items-center justify-end">
-            <button
-              onClick={() =>
-                setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')
-              }
-              className="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
-              {sortOrder === 'newest' ? '↓ Newest First' : '↑ Oldest First'}
-            </button>
-          </div>
-        </div>
-      </div>
+<div className="h-4 sm:h-6"></div>
 
       {/* Attendance Records */}
       <div className="max-w-4xl mx-auto p-4 flex-1 w-full">

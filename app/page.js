@@ -26,51 +26,71 @@ export default function HomePage() {
   ]
 
   // Fetch listings on mount and when filters change
-  useEffect(() => {
-  // Check cache first for instant display
-  const cacheKey = `${selectedCategory}-${searchQuery}`
+  const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+useEffect(() => {
+  const cacheKey = `${selectedCategory}-${searchQuery.trim()}`
+  const localCacheKey = `cached_listings_${cacheKey}`
+
   const cached = cachedListings[cacheKey]
-  
   if (cached) {
     setListings(cached)
     setLoading(false)
+    return
   }
-  
-  // Also check localStorage for persistence
-  const localCacheKey = `cached_listings_${cacheKey}`
+
   const localCached = localStorage.getItem(localCacheKey)
-  if (localCached && !cached) {
-    const parsedCache = JSON.parse(localCached)
-    setListings(parsedCache)
-    setCachedListings(prev => ({ ...prev, [cacheKey]: parsedCache }))
-    setLoading(false)
-  }
-  
-  fetchListings()
-}, [selectedCategory, searchQuery])
+  if (localCached) {
+    const { timestamp, listings } = JSON.parse(localCached)
+    const isExpired = Date.now() - timestamp > CACHE_TTL
 
-  const fetchListings = async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (selectedCategory !== 'all') params.append('category', selectedCategory)
-      if (searchQuery) params.append('search', searchQuery)
-
-      const response = await fetch(`/api/listings?${params}`)
-      const data = await response.json()
-      
-      if (response.ok) {
-        setListings(data.listings)
-        // Cache the data
-        const cacheKey = `${selectedCategory}-${searchQuery}`
-        setCachedListings(prev => ({ ...prev, [cacheKey]: data.listings }))
-      }
-    } catch (error) {
-      console.error('Failed to fetch listings:', error)
-    } finally {
+    if (!isExpired) {
+      setListings(listings)
+      setCachedListings(prev => ({ ...prev, [cacheKey]: listings }))
       setLoading(false)
+      return
+    } else {
+      localStorage.removeItem(localCacheKey) // expired
     }
   }
+
+  fetchListings(cacheKey)
+}, [selectedCategory, searchQuery])
+
+
+
+  const fetchListings = async (cacheKey) => {
+  setLoading(true)
+  try {
+    const params = new URLSearchParams()
+    if (selectedCategory !== 'all') params.append('category', selectedCategory)
+    if (searchQuery) params.append('search', searchQuery)
+
+    const response = await fetch(`/api/listings?${params}`)
+    const data = await response.json()
+
+    if (response.ok) {
+      setListings(data.listings)
+      
+      // ✅ 4. Update in-memory cache
+      setCachedListings(prev => ({ ...prev, [cacheKey]: data.listings }))
+      
+      // ✅ 5. Persist to localStorage (5 min expiry optional)
+      const cacheObject = {
+        timestamp: Date.now(),
+        listings: data.listings
+      }
+      localStorage.setItem(`cached_listings_${cacheKey}`, JSON.stringify(cacheObject.listings))
+
+      console.log('🛰️ Fetched fresh data:', cacheKey)
+    }
+  } catch (error) {
+    console.error('Failed to fetch listings:', error)
+  } finally {
+    setLoading(false)
+  }
+}
+
 
   const handleSearch = (e) => {
     const value = e.target.value

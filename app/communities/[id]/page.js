@@ -285,56 +285,65 @@ export default function CommunityDetailPage({ params }) {
   return (
     <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col pb-nav-safe">
       {/* Header */}
-      <div 
-  className="fixed top-0 left-0 right-0 text-white p-3 sm:p-4 z-20 shadow-lg safe-top"
-  style={{
-    background: `linear-gradient(135deg, ${community.color}, ${community.color}dd)`
-  }}
->
+{/* Minimal Unified Header (with dropdown) */}
+<div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg safe-top">
   <div className="max-w-6xl mx-auto">
     <div className="flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
-      
-      {/* Left: Community Icon + Name */}
       <div className="flex items-center gap-3">
-        <div className="text-3xl relative">
-          {community.icon}
-          {isConnected && (
-            <div 
-              className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-white" 
-              title="Live updates enabled"
-            />
-          )}
-        </div>
-
+        <button
+          onClick={() => router.push('/communities')}
+          className="flex items-center gap-1 hover:opacity-80 active:scale-95 transition"
+        >
+          <ChevronLeft size={22} />
+        </button>
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">{community.name}</h1>
-          <p className="text-white/90 text-xs sm:text-sm">
+          <p className="text-blue-100 text-xs sm:text-sm">
             {community.memberCount} members • {community.postCount} posts
           </p>
         </div>
       </div>
 
-      {/* Right: Actions */}
+      {/* Right: Add Post + More Menu */}
       <div className="flex items-center gap-2">
-        <button
-          onClick={handleLeaveCommunity}
-          className="p-2 sm:px-4 sm:py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors flex items-center gap-2"
-          title="Leave Community"
-        >
-          <LogOut size={18} />
-          <span className="hidden sm:inline text-sm">Leave</span>
-        </button>
-
         <button
           onClick={() => setShowPostModal(true)}
           className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
         >
           <Plus size={22} />
         </button>
+
+        {/* 3-dot menu */}
+        <div className="relative">
+          <button
+            onClick={() => setShowMenu((prev) => !prev)}
+            className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+          >
+            ⋯
+          </button>
+
+          {showMenu && (
+            <div className="absolute right-0 mt-2 bg-white text-gray-800 rounded-lg shadow-lg w-40 overflow-hidden z-30">
+              <button
+                onClick={() => {
+                  setShowMenu(false)
+                  handleLeaveCommunity()
+                }}
+                className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
+              >
+                <LogOut size={16} />
+                <span>Leave Community</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+
+
 
 
       {/* Tabs */}
