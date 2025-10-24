@@ -11,6 +11,7 @@ export default function AttendancePage() {
   const [stats, setStats] = useState(null)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [todayAttendance, setTodayAttendance] = useState({})
+  const [absenceDescriptions, setAbsenceDescriptions] = useState({})
   const [showAddSubject, setShowAddSubject] = useState(false)
   const [newSubjectName, setNewSubjectName] = useState('')
   const [loading, setLoading] = useState(true)
@@ -95,13 +96,18 @@ const fetchStats = async () => {
       const data = await response.json()
       if (response.ok) {
         const attMap = {}
+        const descMap = {}
         data.attendance.forEach(att => {
-          attMap[att.subjectId.toString()] = {
+        attMap[att.subjectId.toString()] = {
             status: att.status,
             reason: att.reason
-          }
+        }
+        if (att.description) {
+            descMap[att.subjectId.toString()] = att.description
+        }
         })
         setTodayAttendance(attMap)
+        setAbsenceDescriptions(descMap)
       }
     } catch (error) {
       console.error('Failed to fetch attendance:', error)
@@ -165,7 +171,8 @@ const fetchStats = async () => {
     const attendance = subjects.map(subject => ({
       subjectId: subject._id,
       status: todayAttendance[subject._id]?.status || 'noclass',
-      reason: todayAttendance[subject._id]?.reason || null
+      reason: todayAttendance[subject._id]?.reason || null,
+      description: absenceDescriptions[subject._id] || null
     }))
 
     const response = await fetch('/api/attendance/mark', {
@@ -326,19 +333,41 @@ const fetchStats = async () => {
                     </div>
 
                     {attendance.status === 'absent' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
-                        <select
-                          value={attendance.reason || 'none'}
-                          onChange={(e) => handleAttendanceChange(subject._id, 'reason', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-sm"
-                        >
-                          <option value="none">None</option>
-                          <option value="placement">Placement</option>
-                          <option value="medical">Medical</option>
-                        </select>
-                      </div>
-                    )}
+                        <>
+                            <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Reason
+                            </label>
+                            <select
+                                value={attendance.reason || 'none'}
+                                onChange={(e) => handleAttendanceChange(subject._id, 'reason', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-sm"
+                            >
+                                <option value="none">None</option>
+                                <option value="placement">Placement</option>
+                                <option value="medical">Medical</option>
+                            </select>
+                            </div>
+                            
+                            {attendance.reason && attendance.reason !== 'none' && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Description (Optional)
+                                </label>
+                                <textarea
+                                value={absenceDescriptions[subject._id] || ''}
+                                onChange={(e) => setAbsenceDescriptions(prev => ({
+                                    ...prev,
+                                    [subject._id]: e.target.value
+                                }))}
+                                placeholder="Add details about your absence..."
+                                rows={2}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm"
+                                />
+                            </div>
+                            )}
+                        </>
+                        )}
                   </div>
                 </div>
               )
@@ -419,44 +448,66 @@ const fetchStats = async () => {
       </div>
 
       {/* Add Subject Modal */}
-      {showAddSubject && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-md sm:rounded-lg">
-            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Add Subject</h2>
-              <button
-                onClick={() => {
-                  setShowAddSubject(false)
-                  setNewSubjectName('')
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X size={24} />
-              </button>
-            </div>
+      {/* Add Subject Modal */}
+{showAddSubject && (
+  <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="bg-white w-full sm:max-w-md sm:rounded-lg flex flex-col relative">
+      
+      {/* Header */}
+      <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+        <h2 className="text-lg font-bold text-gray-900">Add Subject</h2>
+        <button
+          onClick={() => {
+            setShowAddSubject(false)
+            setNewSubjectName('')
+          }}
+          className="text-gray-500 hover:text-gray-700 transition"
+        >
+          <X size={24} />
+        </button>
+      </div>
 
-            <div className="p-4">
-              <label className="block text-gray-900 font-semibold mb-2">Subject Name</label>
-              <input
-                type="text"
-                value={newSubjectName}
-                onChange={(e) => setNewSubjectName(e.target.value)}
-                placeholder="e.g., Data Structures, Networks"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent mb-4"
-                onKeyPress={(e) => e.key === 'Enter' && handleAddSubject()}
-                autoFocus
-              />
-              <button
-                onClick={handleAddSubject}
-                disabled={!newSubjectName.trim()}
-                className="w-full py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Add Subject
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Scrollable Body */}
+      <div className="flex-1 overflow-y-auto p-5 pb-32 sm:pb-6">
+        <label className="block text-gray-900 font-semibold mb-2">
+          Subject Name
+        </label>
+        <input
+          type="text"
+          value={newSubjectName}
+          onChange={(e) => setNewSubjectName(e.target.value)}
+          placeholder="e.g., DSA, CN"
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-5 text-gray-900 placeholder-gray-400"
+          onKeyPress={(e) => e.key === 'Enter' && handleAddSubject()}
+          autoFocus
+        />
+      </div>
+
+      {/* Fixed Floating Button ABOVE Navbar */}
+      <div
+        className="fixed bottom-[calc(72px+env(safe-area-inset-bottom))] left-0 right-0 px-5 sm:static sm:px-0 sm:pb-6"
+        style={{
+          zIndex: 60,
+        }}
+      >
+        <button
+          onClick={handleAddSubject}
+          disabled={!newSubjectName.trim()}
+          className={`w-full py-3 rounded-lg font-semibold transition-all ${
+            newSubjectName.trim()
+              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md active:scale-[0.98]'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          {newSubjectName.trim() ? 'Add Subject' : 'Enter a Subject Name'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
       </main>
     </div>
   )

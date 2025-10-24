@@ -104,41 +104,31 @@ export default function SubjectAttendancePage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-nav-safe">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-4 sticky top-0 z-10 shadow-lg">
-        <div className="max-w-4xl mx-auto">
-          <button
-            onClick={() => router.push('/attendance')}
-            className="flex items-center gap-2 mb-3 hover:opacity-80 active:scale-95 transition"
-          >
-            <ArrowLeft size={22} />
-            <span className="text-sm">Back to Overview</span>
-          </button>
+      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 z-20 shadow-lg safe-top">
+  <div className="max-w-6xl mx-auto">
+    <div className="flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
+      {/* Left: Back + Subject Name */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => router.push('/attendance')}
+          className="flex items-center gap-1 hover:opacity-80 active:scale-95 transition"
+        >
+          <ArrowLeft size={22} />
+        </button>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold">{subject.name}</h1>
-              <p className="text-purple-100 text-xs sm:text-sm">
-                {detailStats.present}P / {detailStats.absent}A • Total: {detailStats.total}
-              </p>
-            </div>
-            <button
-              onClick={async () => {
-                if (confirm('Delete this subject?')) {
-                  const token = localStorage.getItem('token')
-                  await fetch(`/api/attendance/subjects/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                  })
-                  router.push('/attendance')
-                }
-              }}
-              className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors"
-            >
-              <X size={20} />
-            </button>
-          </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold">{subject.name}</h1>
+          <p className="text-blue-100 text-xs sm:text-sm">
+            {detailStats.present}P / {detailStats.absent}A • Total: {detailStats.total}
+          </p>
         </div>
       </div>
+
+      {/* Optional future actions (e.g., edit) could go here */}
+    </div>
+  </div>
+</div>
+
 
       {/* Filters */}
       <div className="bg-white border-b sticky top-[96px] z-10 p-3 space-y-3">
@@ -266,9 +256,12 @@ export default function SubjectAttendancePage() {
                       })}
                     </div>
                     {record.status === 'present' ? (
-                      <div className="text-green-600 text-sm font-medium mt-1">✓ Present</div>
-                    ) : (
-                      <div className="text-red-600 text-sm font-medium mt-1 flex items-center gap-2">
+                    <div className="text-green-600 text-sm font-medium mt-1">
+                      ✓ Present
+                    </div>
+                  ) : record.status === 'absent' ? (
+                    <div className="mt-1">
+                      <div className="text-red-600 text-sm font-medium flex items-center gap-2">
                         ✗ Absent
                         {record.reason && record.reason !== 'none' && (
                           <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
@@ -276,8 +269,19 @@ export default function SubjectAttendancePage() {
                           </span>
                         )}
                       </div>
-                    )}
+                      {record.description && (
+                        <p className="text-gray-600 text-xs mt-1 italic">
+                           {record.description}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-gray-500 text-sm mt-1">No Class</div>
+                  )}
+
                   </div>
+                  
+                  
                   <div className={`text-3xl ${record.status === 'present' ? 'text-green-500' : 'text-red-500'}`}>
                     {record.status === 'present' ? '✓' : '✗'}
                   </div>

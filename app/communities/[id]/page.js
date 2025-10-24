@@ -286,56 +286,56 @@ export default function CommunityDetailPage({ params }) {
     <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col pb-nav-safe">
       {/* Header */}
       <div 
-        className="text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg flex-shrink-0 safe-top"
-        style={{ background: `linear-gradient(135deg, ${community.color}, ${community.color}dd)` }}
-      >
-        <div className="max-w-4xl mx-auto">
-          <button 
-            onClick={() => router.back()}
-            className="flex items-center gap-2 mb-3 hover:opacity-80 active:scale-95 transition"
-          >
-            <ChevronLeft size={22} />
-            <span className="text-sm">Back</span>
-          </button>
-          
-          <div className="flex items-center gap-3">
-            <div className="text-4xl relative">
-              {community.icon}
-              {/* ✅ CONNECTION INDICATOR */}
-              {isConnected && (
-                <div 
-                  className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-white" 
-                  title="Live updates enabled"
-                />
-              )}
-            </div>
-            <div className="flex-1">
-              <h1 className="text-xl sm:text-2xl font-bold">{community.name}</h1>
-              <p className="text-white/90 text-xs sm:text-sm">
-                {community.memberCount} members • {community.postCount} posts
-              </p>
-            </div>
+  className="fixed top-0 left-0 right-0 text-white p-3 sm:p-4 z-20 shadow-lg safe-top"
+  style={{
+    background: `linear-gradient(135deg, ${community.color}, ${community.color}dd)`
+  }}
+>
+  <div className="max-w-6xl mx-auto">
+    <div className="flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
+      
+      {/* Left: Community Icon + Name */}
+      <div className="flex items-center gap-3">
+        <div className="text-3xl relative">
+          {community.icon}
+          {isConnected && (
+            <div 
+              className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-white" 
+              title="Live updates enabled"
+            />
+          )}
+        </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleLeaveCommunity}
-                className="p-2 sm:px-4 sm:py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors flex items-center gap-2"
-                title="Leave Community"
-              >
-                <LogOut size={18} />
-                <span className="hidden sm:inline text-sm">Leave</span>
-              </button>
-              
-              <button
-                onClick={() => setShowPostModal(true)}
-                className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
-              >
-                <Plus size={22} />
-              </button>
-            </div>
-          </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold">{community.name}</h1>
+          <p className="text-white/90 text-xs sm:text-sm">
+            {community.memberCount} members • {community.postCount} posts
+          </p>
         </div>
       </div>
+
+      {/* Right: Actions */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleLeaveCommunity}
+          className="p-2 sm:px-4 sm:py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors flex items-center gap-2"
+          title="Leave Community"
+        >
+          <LogOut size={18} />
+          <span className="hidden sm:inline text-sm">Leave</span>
+        </button>
+
+        <button
+          onClick={() => setShowPostModal(true)}
+          className="p-2 sm:p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+        >
+          <Plus size={22} />
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
       {/* Tabs */}
       <div className="bg-white border-b sticky top-[120px] sm:top-[128px] z-10">

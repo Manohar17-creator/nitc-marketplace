@@ -42,7 +42,8 @@ export async function POST(request) {
       subjectId: new ObjectId(att.subjectId),
       date: new Date(date),
       status: att.status, // present, absent, noclass
-      reason: att.reason || null, // placement, medical, none
+      reason: att.reason || null, // placement, medical, none,
+      description: att.description || null,
       createdAt: new Date()
     }))
 

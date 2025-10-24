@@ -27,14 +27,27 @@ export default function HomePage() {
 
   // Fetch listings on mount and when filters change
   useEffect(() => {
-    // Check cache first for instant display
-    const cacheKey = `${selectedCategory}-${searchQuery}`
-    if (cachedListings[cacheKey]) {
-      setListings(cachedListings[cacheKey])
-    }
-    
-    fetchListings()
-  }, [selectedCategory, searchQuery])
+  // Check cache first for instant display
+  const cacheKey = `${selectedCategory}-${searchQuery}`
+  const cached = cachedListings[cacheKey]
+  
+  if (cached) {
+    setListings(cached)
+    setLoading(false)
+  }
+  
+  // Also check localStorage for persistence
+  const localCacheKey = `cached_listings_${cacheKey}`
+  const localCached = localStorage.getItem(localCacheKey)
+  if (localCached && !cached) {
+    const parsedCache = JSON.parse(localCached)
+    setListings(parsedCache)
+    setCachedListings(prev => ({ ...prev, [cacheKey]: parsedCache }))
+    setLoading(false)
+  }
+  
+  fetchListings()
+}, [selectedCategory, searchQuery])
 
   const fetchListings = async () => {
     setLoading(true)
