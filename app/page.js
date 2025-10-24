@@ -32,29 +32,68 @@ useEffect(() => {
   const cacheKey = `${selectedCategory}-${searchQuery.trim()}`
   const localCacheKey = `cached_listings_${cacheKey}`
 
-  const cached = cachedListings[cacheKey]
-  if (cached) {
-    setListings(cached)
-    setLoading(false)
-    return
+  let foundCache = false
+
+  const loadFromCache = () => {
+    // ✅ 1. In-memory cache
+    const cached = cachedListings[cacheKey]
+    if (cached) {
+      setListings(cached)
+      foundCache = true
+      return true
+    }
+
+    // ✅ 2. LocalStorage cache
+    const localCached = localStorage.getItem(localCacheKey)
+    if (localCached) {
+      const { timestamp, listings } = JSON.parse(localCached)
+      const isExpired = Date.now() - timestamp > CACHE_TTL
+      if (!isExpired) {
+        setListings(listings)
+        setCachedListings((prev) => ({ ...prev, [cacheKey]: listings }))
+        foundCache = true
+        return true
+      } else {
+        localStorage.removeItem(localCacheKey)
+      }
+    }
+
+    return false
   }
 
-  const localCached = localStorage.getItem(localCacheKey)
-  if (localCached) {
-    const { timestamp, listings } = JSON.parse(localCached)
-    const isExpired = Date.now() - timestamp > CACHE_TTL
+  const cachedFound = loadFromCache()
+  if (cachedFound) {
+    setLoading(false)
+  } else {
+    setLoading(true)
+  }
 
-    if (!isExpired) {
-      setListings(listings)
-      setCachedListings(prev => ({ ...prev, [cacheKey]: listings }))
+  // ✅ Always fetch in background to refresh cache
+  const fetchAndUpdate = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (selectedCategory !== 'all') params.append('category', selectedCategory)
+      if (searchQuery) params.append('search', searchQuery)
+
+      const response = await fetch(`/api/listings?${params}`)
+      const data = await response.json()
+
+      if (response.ok && Array.isArray(data.listings)) {
+        setListings(data.listings)
+        setCachedListings((prev) => ({ ...prev, [cacheKey]: data.listings }))
+        localStorage.setItem(
+          localCacheKey,
+          JSON.stringify({ timestamp: Date.now(), listings: data.listings })
+        )
+      }
+    } catch (err) {
+      console.error('Fetch failed:', err)
+    } finally {
       setLoading(false)
-      return
-    } else {
-      localStorage.removeItem(localCacheKey) // expired
     }
   }
 
-  fetchListings(cacheKey)
+  fetchAndUpdate()
 }, [selectedCategory, searchQuery])
 
 
@@ -211,41 +250,59 @@ useEffect(() => {
       </div>
     </div>
 
-    {/* Listings */}
-    <div className="mb-4 flex items-center justify-between">
-      <h2 className="font-semibold text-gray-900">
-        {selectedCategory === 'all'
-          ? 'All Listings'
-          : categories.find(c => c.id === selectedCategory)?.name}
-        <span className="text-gray-500 font-normal ml-2">
-          ({listings.length})
-        </span>
-      </h2>
-    </div>
+{/* Listings Section */}
+<div className="mb-6 mt-2">
+  {/* Header */}
+  <div className="flex items-center justify-between mb-3">
+    <h2 className="font-semibold text-gray-900 text-base sm:text-lg">
+      {selectedCategory === 'all'
+        ? 'All Listings'
+        : categories.find(c => c.id === selectedCategory)?.name || 'Listings'}
+      <span className="text-gray-500 font-normal ml-2">
+        ({listings?.length ?? 0})
+      </span>
+    </h2>
 
-    {/* Loading / Empty / Listings */}
-    {loading ? (
-      <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading listings...</p>
-      </div>
-    ) : listings.length === 0 ? (
-      <div className="text-center py-12 bg-white rounded-lg">
-        <p className="text-gray-600 mb-4">No listings found</p>
-        <Link
-          href="/post"
-          className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          Post the first listing
-        </Link>
-      </div>
-    ) : (
-      <div className="grid gap-4 pb-8">
-        {listings.map(listing => (
-          <ListingCard key={listing._id} listing={listing} />
-        ))}
-      </div>
-    )}
+    {/* Optional Refresh / Sort */}
+    <button
+      onClick={fetchListings}
+      disabled={loading}
+      className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 active:scale-95 transition-all"
+    >
+      ↻ Refresh
+    </button>
+  </div>
+
+  {/* Loading State */}
+  {loading ? (
+    <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+      <p className="mt-4 text-gray-600 font-medium">Loading listings...</p>
+    </div>
+  ) : !listings || listings.length === 0 ? (
+    /* Empty State */
+    <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+      <div className="text-5xl mb-3">📦</div>
+      <p className="text-gray-700 mb-2 font-medium">No listings found</p>
+      <p className="text-gray-500 text-sm mb-4">
+        Try another category or post something new!
+      </p>
+      <Link
+        href="/post"
+        className="inline-block px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-md active:scale-95"
+      >
+        + Post a Listing
+      </Link>
+    </div>
+  ) : (
+    /* Listings Grid */
+    <div className="grid gap-4 pb-8 transition-all duration-300">
+      {listings.map((listing) => (
+        <ListingCard key={listing._id} listing={listing} />
+      ))}
+    </div>
+  )}
+</div>
   </div>
 
   {/* Floating Action Button */}
