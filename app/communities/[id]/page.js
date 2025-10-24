@@ -15,6 +15,8 @@ export default function CommunityDetailPage({ params }) {
   const [loading, setLoading] = useState(true)
   const [showPostModal, setShowPostModal] = useState(false)
   const [currentUserId, setCurrentUserId] = useState(null)
+  const [showMenu, setShowMenu] = useState(false)
+
   
   // ✅ CACHING STATE
   const [cachedPosts, setCachedPosts] = useState({

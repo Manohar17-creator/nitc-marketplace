@@ -130,7 +130,20 @@ export default function SubjectAttendancePage() {
   </div>
 </div>
 
-<AttendanceFilters />
+<AttendanceFilters
+  filterStatus={filterStatus}
+  setFilterStatus={setFilterStatus}
+  filterReason={filterReason}
+  setFilterReason={setFilterReason}
+  reasonCounts={reasonCounts}
+  stats={{
+    all: attendance.length,
+    present: detailStats.present,
+    absent: detailStats.absent,
+  }}
+/>
+
+
 
 <div className="h-4 sm:h-6"></div>
 
