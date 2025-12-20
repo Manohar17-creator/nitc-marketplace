@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, Calendar, MapPin, AlignLeft, Image as ImageIcon, Type } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
