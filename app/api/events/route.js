@@ -10,7 +10,6 @@ export async function GET(request) {
     const db = client.db('nitc-marketplace')
 
     // 1. Fetch Active Ads for Events
-    // query: { $in: [..., null] } ensures OLD ads (without placement field) still show up
     const ads = await db.collection('ads')
       .find({ 
         active: true, 
@@ -30,10 +29,9 @@ export async function GET(request) {
     // 3. Construct the Feed
     const mixedFeed = []
     
-    // 👇 FORCE AD FIRST: Push the first Ad to index 0
+    // Force Ad First
     if (ads.length > 0) {
-      const priorityAd = ads[0] 
-      mixedFeed.push({ type: 'ad', data: priorityAd })
+      mixedFeed.push({ type: 'ad', data: ads[0] })
     }
 
     let adIndex = 1 
@@ -54,6 +52,7 @@ export async function GET(request) {
     })
 
   } catch (error) {
+    console.error('Fetch events error:', error)
     return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 })
   }
 }
@@ -62,8 +61,33 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const token = request.headers.get('authorization')?.split(' ')[1]
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    
     const decoded = verifyToken(token)
-    if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+
+    const client = await clientPromise
+    const db = client.db('nitc-marketplace')
+    
+    const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
+    
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // ✅ 1. RATE LIMITING (Spam Protection)
+    const COOLDOWN_MS = 60 * 1000; // 1 Minute
+    const now = Date.now();
+    // Re-use 'lastPostedAt' so users can't spam posts AND events at the same time
+    const lastActionTime = user.lastPostedAt ? new Date(user.lastPostedAt).getTime() : 0;
+
+    if (now - lastActionTime < COOLDOWN_MS) {
+      const waitSeconds = Math.ceil((COOLDOWN_MS - (now - lastActionTime)) / 1000);
+      return NextResponse.json(
+        { error: `Please wait ${waitSeconds}s before creating another event.` },
+        { status: 429 }
+      );
+    }
 
     const data = await request.json()
     const { title, description, venue, eventDate, image } = data
@@ -72,13 +96,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-    const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
-
     const dateObj = new Date(eventDate)
     const expiryObj = new Date(dateObj)
-    expiryObj.setDate(expiryObj.getDate() + 7) 
+    expiryObj.setDate(expiryObj.getDate() + 1) // Expire 1 day after event date
 
     const newEvent = {
       title,
@@ -90,6 +110,7 @@ export async function POST(request) {
       organizer: {
         id: user._id,
         name: user.name,
+        // email: user.email // Optional: Add if you want strict ownership checks later
       },
       interested: [],
       reports: [],
@@ -97,10 +118,19 @@ export async function POST(request) {
       createdAt: new Date()
     }
 
-    await db.collection('events').insertOne(newEvent)
+    // ✅ 2. Insert Event & Update User Cooldown in parallel
+    await Promise.all([
+      db.collection('events').insertOne(newEvent),
+      db.collection('users').updateOne(
+        { _id: user._id },
+        { $set: { lastPostedAt: new Date() } }
+      )
+    ]);
+
     return NextResponse.json({ success: true, message: 'Event created!' })
 
   } catch (error) {
+    console.error('Create event error:', error)
     return NextResponse.json({ error: 'Failed to create event' }, { status: 500 })
   }
 }

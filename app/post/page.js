@@ -178,22 +178,29 @@ const removeImage = (index) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 sticky top-0 z-10 shadow-lg">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-3">
-            <button 
-                onClick={() => router.back()}
-                className="p-2 -ml-2 hover:bg-blue-700 rounded-lg transition-colors"
-            >
-                <ArrowLeft size={22} />
-            </button>
-            <div>
-                <h1 className="text-2xl font-bold">Post New Listing</h1>
-                <p className="text-blue-100 text-sm">Fill in the details below</p>
-            </div>
-            </div>
-        </div>
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white sticky top-0 z-10 shadow-lg safe-top">
+  {/* 1. Removed 'p-4' from parent 
+      2. Added 'h-[64px] sm:h-[72px]' to enforce standard height
+      3. Added 'flex items-center px-4' to center content vertically
+  */}
+  <div className="max-w-2xl mx-auto h-[64px] sm:h-[72px] flex items-center px-4">
+    <div className="flex items-center gap-3">
+      <button 
+          onClick={() => router.back()}
+          // Updated hover effect to be circular and white-transparent like other headers
+          className="p-2 -ml-2 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
+      >
+          <ArrowLeft size={24} />
+      </button>
+      
+      <div>
+          <h1 className="text-lg sm:text-xl font-bold leading-tight">Post New Listing</h1>
+          {/* Adjusted text size and margins to fit neatly in the fixed height */}
+          <p className="text-blue-100 text-xs sm:text-sm leading-none mt-0.5">Fill in the details below</p>
       </div>
+    </div>
+  </div>
+</div>
 
       <div className="max-w-2xl mx-auto p-4 pb-8">
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">

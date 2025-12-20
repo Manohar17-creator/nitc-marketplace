@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, MessageSquare, Briefcase, Star, Users as UsersIcon, Plus, Send, Trash2, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { getStoredUser } from '@/lib/auth-utils'
+import CreatePostModal from '@/components/CreatePostModal'
 
 export default function CommunityDetailPage({ params }) {
   const router = useRouter()
@@ -80,6 +81,35 @@ export default function CommunityDetailPage({ params }) {
       console.error('Failed to fetch community:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // This function receives the data from the Modal
+  const handleCreatePost = async (postData) => {
+    // Note: No e.preventDefault() needed here, the modal handles that
+    
+    try {
+      const res = await fetch('/api/posts', { // Check if your API route is different
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({
+          ...postData,
+          communityId: params.id // Ensure you pass the community ID
+        })
+      })
+
+      if (res.ok) {
+        setShowPostModal(false) // Close modal
+        router.refresh() // Refresh feed
+      } else {
+        throw new Error('Failed to create post')
+      }
+    } catch (error) {
+      // Throwing error here lets the Modal know something went wrong
+      // so it can show the error message inside the modal
+      throw error 
     }
   }
 
@@ -287,57 +317,57 @@ export default function CommunityDetailPage({ params }) {
       {/* Header */}
 {/* Minimal Unified Header (with dropdown) */}
 <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
-  <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px] transition-all duration-300">
-    <div className="flex items-center justify-between gap-2">
-      {/* Left: Back + Community Name (single line, truncated) */}
-      <div className="flex items-center gap-2 min-w-0 flex-1">
+  {/* Main Container - direct flex parent */}
+  <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px] transition-all duration-300 gap-3">
+    
+    {/* Left Side: Back Button + Title */}
+    <div className="flex items-center gap-2 min-w-0 flex-1">
+      <button
+        onClick={() => router.push('/communities')}
+        className="flex-shrink-0 hover:opacity-80 active:scale-95 transition p-1 -ml-1"
+      >
+        <ChevronLeft size={24} />
+      </button>
+      
+      <h1 className="text-lg sm:text-xl font-bold truncate leading-tight">
+        {community.name}
+      </h1>
+    </div>
+
+    {/* Right Side: Actions (Pushed to the edge automatically by 'justify-between' on parent) */}
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <button
+        onClick={() => setShowPostModal(true)}
+        className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors active:scale-95"
+      >
+        <Plus size={24} />
+      </button>
+
+      <div className="relative">
         <button
-          onClick={() => router.push('/communities')}
-          className="flex-shrink-0 hover:opacity-80 active:scale-95 transition"
+          onClick={() => setShowMenu((prev) => !prev)}
+          className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors text-xl font-bold pb-1"
         >
-          <ChevronLeft size={22} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-base sm:text-lg font-bold truncate">
-            {community.name.length > 25 ? `${community.name.substring(0, 25)}...` : community.name}
-          </h1>
-        </div>
-      </div>
-
-      {/* Right: Actions */}
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <button
-          onClick={() => setShowPostModal(true)}
-          className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
-        >
-          <Plus size={20} />
+          ⋯
         </button>
 
-        <div className="relative">
-          <button
-            onClick={() => setShowMenu((prev) => !prev)}
-            className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors text-lg leading-none"
-          >
-            ⋯
-          </button>
-
-          {showMenu && (
-            <div className="absolute right-0 mt-2 bg-white text-gray-800 rounded-lg shadow-lg w-40 overflow-hidden z-30">
-              <button
-                onClick={() => {
-                  setShowMenu(false)
-                  handleLeaveCommunity()
-                }}
-                className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
-              >
-                <LogOut size={16} />
-                <span>Leave</span>
-              </button>
-            </div>
-          )}
-        </div>
+        {showMenu && (
+          <div className="absolute right-0 mt-2 bg-white text-gray-800 rounded-lg shadow-xl ring-1 ring-black/5 w-48 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+            <button
+              onClick={() => {
+                setShowMenu(false)
+                handleLeaveCommunity()
+              }}
+              className="w-full px-4 py-3 text-left text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
+            >
+              <LogOut size={18} />
+              <span className="font-medium">Leave Community</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
+
   </div>
 </div>
 
@@ -544,190 +574,12 @@ export default function CommunityDetailPage({ params }) {
 
       {/* Post Modal */}
       {showPostModal && (
-        <PostModal
-          communityId={communityId}
-          activeTab={activeTab}
-          onClose={() => setShowPostModal(false)}
-          onSuccess={() => {
-            setShowPostModal(false)
-            fetchPosts(communityId, activeTab)
-          }}
-        />
-      )}
+  <CreatePostModal 
+    onClose={() => setShowPostModal(false)} 
+    onSubmit={handleCreatePost} 
+  />
+)}
     </div>
   )
 }
 
-// Post Modal Component
-function PostModal({ communityId, activeTab, onClose, onSuccess }) {
-  const [formData, setFormData] = useState({
-    type: activeTab === 'members' ? 'feed' : activeTab,
-    title: '',
-    content: '',
-    embedUrl: '',
-    embedType: ''
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  const detectEmbedType = (url) => {
-    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube'
-    if (url.includes('instagram.com')) return 'instagram'
-    if (url.includes('twitter.com') || url.includes('x.com')) return 'twitter'
-    return 'link'
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-
-    if (!formData.content.trim()) {
-      setError('Please write something')
-      setLoading(false)
-      return
-    }
-
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        setError('Please login first')
-        setLoading(false)
-        return
-      }
-
-      const embedType = formData.embedUrl ? detectEmbedType(formData.embedUrl) : null
-
-      const response = await fetch(`/api/communities/${communityId}/posts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...formData,
-          embedType
-        })
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        onSuccess()
-      } else {
-        setError(data.error || 'Failed to create post')
-      }
-    } catch (err) {
-      setError('Something went wrong')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-2xl sm:rounded-lg max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Create Post</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ✕
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-4">
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          {/* Post Type */}
-          <div className="mb-4">
-            <label className="block text-gray-900 font-semibold mb-2 text-sm">
-              Post Type
-            </label>
-            <select
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            >
-              <option value="feed">Feed Post (Everyone can see)</option>
-              <option value="job">Job/Collaboration (Everyone can see)</option>
-              <option value="portfolio">Portfolio (Only visible in your profile)</option>
-            </select>
-          </div>
-
-          {/* Title (for jobs and portfolio) */}
-          {(formData.type === 'job' || formData.type === 'portfolio') && (
-            <div className="mb-4">
-              <label className="block text-gray-900 font-semibold mb-2 text-sm">
-                Title
-              </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder={formData.type === 'job' ? 'e.g., Need Video Editor for Short Film' : 'e.g., My Latest Short Film'}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          )}
-
-          {/* Content */}
-          <div className="mb-4">
-            <label className="block text-gray-900 font-semibold mb-2 text-sm">
-              Content
-            </label>
-            <textarea
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              required
-              rows={5}
-              placeholder="Write your post..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            />
-          </div>
-
-          {/* Embed URL */}
-          <div className="mb-4">
-            <label className="block text-gray-900 font-semibold mb-2 text-sm">
-              Link (Optional)
-            </label>
-            <input
-              type="url"
-              value={formData.embedUrl}
-              onChange={(e) => setFormData({ ...formData, embedUrl: e.target.value })}
-              placeholder="YouTube, Instagram, or any link..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Paste YouTube or Instagram link to embed
-            </p>
-          </div>
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                Posting...
-              </>
-            ) : (
-              <>
-                <Send size={18} />
-                Post
-              </>
-            )}
-          </button>
-        </form>
-      </div>
-    </div>
-  )
-}

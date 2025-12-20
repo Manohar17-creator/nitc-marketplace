@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Calendar, MapPin, AlignLeft, Image as ImageIcon, Type } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 export default function CreateEvent() {
   const router = useRouter()
@@ -63,6 +64,11 @@ export default function CreateEvent() {
 
       if (res.ok) {
         alert('Event created successfully! 🎉')
+        
+        // ✅ FIX: Force the Events page to reload data from the server
+        router.refresh() 
+        
+        // Then navigate
         router.push('/events')
       } else {
         const data = await res.json()
