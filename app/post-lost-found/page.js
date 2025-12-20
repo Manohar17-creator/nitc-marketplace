@@ -2,9 +2,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Upload, X, ArrowLeft, Loader, Search, MapPin, Calendar, Gift } from 'lucide-react'
+import { compressImage } from '@/lib/image-compression'
 
 export default function PostLostFound() {
   const router = useRouter()
+  
+  // -- State for Form --
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -15,10 +18,16 @@ export default function PostLostFound() {
     contactMethod: 'phone',
     images: []
   })
+  
+  // -- State for Status --
   const [loading, setLoading] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState('')
   const [imagePreviews, setImagePreviews] = useState([])
+
+  // -- State for Header Search (New) --
+  const [isSearchVisible, setIsSearchVisible] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -37,70 +46,82 @@ export default function PostLostFound() {
   }
 
   const handleImageUpload = async (e) => {
-    const files = Array.from(e.target.files)
-    
-    if (files.length + imagePreviews.length > 3) {
-      setError('Maximum 3 images allowed')
-      return
-    }
+  const files = Array.from(e.target.files)
+  
+  if (files.length + imagePreviews.length > 3) {
+    setError('Maximum 3 images allowed')
+    return
+  }
 
-    if (files.length === 0) return
+  if (files.length === 0) return
 
-    setError('')
-    setUploadingImage(true)
+  setError('')
+  setUploadingImage(true)
 
-    try {
-      const uploadPromises = files.map(async (file) => {
-        if (file.size > 5 * 1024 * 1024) {
-          throw new Error('File size must be less than 5MB')
-        }
+  try {
+    const uploadPromises = files.map(async (file) => {
+      // Validate file size BEFORE compression (max 10MB raw)
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('File size must be less than 10MB')
+      }
 
-        if (!file.type.startsWith('image/')) {
-          throw new Error('Only image files are allowed')
-        }
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Only image files are allowed')
+      }
 
-        const formData = new FormData()
-        formData.append('file', file)
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        })
-
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || 'Upload failed')
-        }
-
-        const data = await response.json()
-        return {
-          url: data.url,
-          preview: data.url
-        }
-      })
-
-      const uploadedImages = await Promise.all(uploadPromises)
+      // ✅ COMPRESS IMAGE FIRST
+      console.log('📦 Compressing image...')
+      const compressedFile = await compressImage(file)
       
-      setImagePreviews([...imagePreviews, ...uploadedImages])
-      setFormData({
-        ...formData,
-        images: [...formData.images, ...uploadedImages.map(img => img.url)]
+      // Create form data with compressed image
+      const formData = new FormData()
+      formData.append('file', compressedFile)
+
+      // Upload to your API
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
       })
 
-    } catch (err) {
-      setError(err.message || 'Failed to upload images')
-    } finally {
-      setUploadingImage(false)
-    }
-  }
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Upload failed')
+      }
 
-  const removeImage = (index) => {
-    const newPreviews = imagePreviews.filter((_, i) => i !== index)
-    const newImages = formData.images.filter((_, i) => i !== index)
+      const data = await response.json()
+      return {
+        url: data.url,
+        preview: data.url
+      }
+    })
+
+    const uploadedImages = await Promise.all(uploadPromises)
     
-    setImagePreviews(newPreviews)
-    setFormData({ ...formData, images: newImages })
+    setImagePreviews([...imagePreviews, ...uploadedImages])
+    setFormData({
+      ...formData,
+      images: [...formData.images, ...uploadedImages.map(img => img.url)]
+    })
+
+    console.log('✅ All images uploaded successfully!')
+
+  } catch (err) {
+    console.error('Upload error:', err)
+    setError(err.message || 'Failed to upload images')
+  } finally {
+    setUploadingImage(false)
   }
+}
+
+// Keep removeImage function as is
+const removeImage = (index) => {
+  const newPreviews = imagePreviews.filter((_, i) => i !== index)
+  const newImages = formData.images.filter((_, i) => i !== index)
+  
+  setImagePreviews(newPreviews)
+  setFormData({ ...formData, images: newImages })
+}
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -164,24 +185,71 @@ export default function PostLostFound() {
 
   return (
     <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col">
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-700 text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg flex-shrink-0">
-        <div className="max-w-2xl mx-auto">
-          <button 
-            onClick={() => router.back()}
-            className="flex items-center gap-2 mb-4 hover:opacity-80 active:scale-95 transition"
-          >
-            <ArrowLeft size={24} />
-            <span>Back</span>
-          </button>
-          <div className="flex items-center gap-3">
-            <Search size={28} />
-            <div>
-              <h1 className="text-2xl font-bold">Lost & Found</h1>
-              <p className="text-indigo-100 text-sm">Help reunite lost items</p>
+      
+      {/* --- NEW HEADER START --- */}
+      {/* Spacer to prevent content from hiding behind fixed header */}
+      <div className="h-[64px] sm:h-[72px]" />
+
+      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-50 shadow-lg safe-top">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px] transition-all duration-300">
+          {!isSearchVisible ? (
+            <>
+              {/* Back Button & Title */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <button
+                  onClick={() => router.back()}
+                  className="p-1 hover:bg-blue-500 rounded-full active:scale-95 transition"
+                >
+                  <ArrowLeft size={24} />
+                </button>
+
+                <div className="leading-tight">
+                  <h1 className="text-lg sm:text-xl font-bold">Lost & Found</h1>
+                  <p className="text-blue-100 text-xs sm:text-sm">Help reunite items</p>
+                </div>
+              </div>
+
+              {/* Search Toggle Icon */}
+              <button
+                onClick={() => setIsSearchVisible(true)}
+                className="p-2 hover:bg-blue-700 active:bg-blue-800 rounded-full transition-all active:scale-95"
+              >
+                <Search size={22} className="text-white" />
+              </button>
+            </>
+          ) : (
+            /* Expanded Search Input */
+            <div className="flex items-center gap-2 w-full transition-all duration-300 animate-in fade-in slide-in-from-right-4">
+              <button
+                onClick={() => {
+                  setIsSearchVisible(false);
+                  setSearchQuery('');
+                }}
+                className="p-2 hover:bg-blue-700 active:bg-blue-800 rounded-full transition-all active:scale-95"
+              >
+                <X size={20} className="text-white" />
+              </button>
+
+              <div className="flex-1 relative">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-200"
+                  size={16}
+                />
+                <input
+                  type="text"
+                  placeholder="Search lost items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                  className="w-full pl-10 pr-4 py-2 rounded-lg text-sm bg-blue-500/40 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300 border border-blue-400/30"
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
+      {/* --- NEW HEADER END --- */}
+
 
       <div className="max-w-2xl mx-auto p-3 sm:p-4 pb-24 flex-1 w-full">
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-4 sm:p-6">

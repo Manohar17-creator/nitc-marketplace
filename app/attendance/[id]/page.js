@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Calendar, X, Filter } from 'lucide-react'
-import AttendanceFilters from './AttendanceFilters'
+import AttendanceFilters from '../AttendanceFilters'
 
 export default function SubjectAttendancePage() {
   const router = useRouter()

@@ -1,23 +1,51 @@
-// app/layout.js
 import './globals.css'
 import MobileNavbar from '@/components/MobileNavbar'
+import IOSInstallPrompt from '@/components/IOSInstallPrompt' // Make sure you created this file from our previous steps
+import ForegroundToast from '@/components/ForegroundToast'
+import GoogleAdSense from '@/components/GoogleAdSense'
 
 export const metadata = {
-  title: 'NITC Marketplace',
-  description: 'Buy, Sell & Share on Campus',
+  title: 'Unyfy',
+  description: 'Where campus comes together',
   manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Unyfy',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+}
+
+export const viewport = {
+  themeColor: '#2563eb',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className="h-full">
+      
       <body className="h-screen flex flex-col bg-gray-50 antialiased overflow-hidden">
-        {/* main is the only scrollable element */}
-        <main className="flex-1 overflow-y-auto overscroll-contain">
+        
+        <GoogleAdSense pId="pub-2297395818809684" />
+
+        {/* 1. iOS PWA Install Prompt (Only shows on iPhone web) */}
+        <IOSInstallPrompt />
+
+        <ForegroundToast />
+        
+        {/* 2. Main Content */}
+        <main className="flex-1 overflow-y-auto overscroll-contain pb-nav-safe">
           {children}
         </main>
-
-        {/* MobileNavbar is fixed + outside main */}
+        
+        {/* 3. Bottom Navigation */}
         <MobileNavbar />
       </body>
     </html>

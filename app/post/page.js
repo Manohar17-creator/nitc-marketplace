@@ -45,72 +45,82 @@ export default function PostListing() {
   }
 
   const handleImageUpload = async (e) => {
-    const files = Array.from(e.target.files)
-    
-    if (files.length + imagePreviews.length > 3) {
-      setError('Maximum 3 images allowed')
-      return
-    }
+  const files = Array.from(e.target.files)
+  
+  if (files.length + imagePreviews.length > 3) {
+    setError('Maximum 3 images allowed')
+    return
+  }
 
-    if (files.length === 0) return
+  if (files.length === 0) return
 
-    setError('')
-    setUploadingImage(true)
+  setError('')
+  setUploadingImage(true)
 
-    try {
-      const uploadPromises = files.map(async (file) => {
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          throw new Error('File size must be less than 5MB')
-        }
+  try {
+    const uploadPromises = files.map(async (file) => {
+      // Validate file size BEFORE compression (max 10MB raw)
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('File size must be less than 10MB')
+      }
 
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-          throw new Error('Only image files are allowed')
-        }
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Only image files are allowed')
+      }
 
-        const formData = new FormData()
-        formData.append('file', file)
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        })
-
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || 'Upload failed')
-        }
-
-        const data = await response.json()
-        return {
-          url: data.url,
-          preview: data.url
-        }
-      })
-
-      const uploadedImages = await Promise.all(uploadPromises)
+      // ✅ COMPRESS IMAGE FIRST
+      console.log('📦 Compressing image...')
+      const compressedFile = await compressImage(file)
       
-      setImagePreviews([...imagePreviews, ...uploadedImages])
-      setFormData({
-        ...formData,
-        images: [...formData.images, ...uploadedImages.map(img => img.url)]
+      // Create form data with compressed image
+      const formData = new FormData()
+      formData.append('file', compressedFile)
+
+      // Upload to your API
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
       })
 
-    } catch (err) {
-      setError(err.message || 'Failed to upload images')
-    } finally {
-      setUploadingImage(false)
-    }
-  }
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Upload failed')
+      }
 
-  const removeImage = (index) => {
-    const newPreviews = imagePreviews.filter((_, i) => i !== index)
-    const newImages = formData.images.filter((_, i) => i !== index)
+      const data = await response.json()
+      return {
+        url: data.url,
+        preview: data.url
+      }
+    })
+
+    const uploadedImages = await Promise.all(uploadPromises)
     
-    setImagePreviews(newPreviews)
-    setFormData({ ...formData, images: newImages })
+    setImagePreviews([...imagePreviews, ...uploadedImages])
+    setFormData({
+      ...formData,
+      images: [...formData.images, ...uploadedImages.map(img => img.url)]
+    })
+
+    console.log('✅ All images uploaded successfully!')
+
+  } catch (err) {
+    console.error('Upload error:', err)
+    setError(err.message || 'Failed to upload images')
+  } finally {
+    setUploadingImage(false)
   }
+}
+
+// Keep removeImage function as is
+const removeImage = (index) => {
+  const newPreviews = imagePreviews.filter((_, i) => i !== index)
+  const newImages = formData.images.filter((_, i) => i !== index)
+  
+  setImagePreviews(newPreviews)
+  setFormData({ ...formData, images: newImages })
+}
 
   const handleSubmit = async (e) => {
     e.preventDefault()

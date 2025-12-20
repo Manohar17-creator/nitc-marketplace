@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, MessageSquare, Briefcase, Star, Users as UsersIcon, Plus, Send, Trash2, LogOut } from 'lucide-react'
 import Link from 'next/link'
-import { useSocket } from '@/hooks/useSocket'
+import { getStoredUser } from '@/lib/auth-utils'
 
 export default function CommunityDetailPage({ params }) {
   const router = useRouter()
@@ -26,56 +26,54 @@ export default function CommunityDetailPage({ params }) {
   })
   const [cachedMembers, setCachedMembers] = useState(null)
 
-  // ✅ WEBSOCKET CONNECTION
-  const { socket, isConnected } = useSocket(communityId)
 
   useEffect(() => {
-    const fetchData = async () => {
-      const resolvedParams = await params
-      const id = resolvedParams.id
-      setCommunityId(id)
-      await fetchCommunity(id)
-      await fetchPosts(id, 'feed')
-    }
-    fetchData()
+  const fetchData = async () => {
+    const resolvedParams = await params
+    const id = resolvedParams.id
+    setCommunityId(id)
+    await fetchCommunity(id)
+    await fetchPosts(id, 'feed')
+  }
+  fetchData()
 
-    if (typeof window !== 'undefined') {
-      const user = JSON.parse(localStorage.getItem('user') || '{}')
+  if (typeof window !== 'undefined') {
+    const user = getStoredUser()
+    if (user) {
       setCurrentUserId(user.id)
+    } else {
+      router.push('/login')
     }
-  }, [params])
+  }
+}, [params, router])
 
   // ✅ LISTEN FOR NEW POSTS VIA WEBSOCKET
-  useEffect(() => {
-    if (!socket) return
+ useEffect(() => {
+  if (!communityId) return
 
-    socket.on('new-post', (newPost) => {
-      console.log('New post received:', newPost)
-      
-      // Add to current view if matching type
-      if (activeTab === newPost.type || activeTab === 'feed') {
-        setPosts(prev => [newPost, ...prev])
-      }
-      
-      // Update cache for that post type
-      setCachedPosts(prev => ({
-        ...prev,
-        [newPost.type]: prev[newPost.type] ? [newPost, ...prev[newPost.type]] : [newPost],
-        feed: prev.feed ? [newPost, ...prev.feed] : [newPost]
-      }))
-    })
-
-    return () => {
-      socket.off('new-post')
+  // Poll for new posts every 5 seconds
+  const pollInterval = setInterval(() => {
+    if (activeTab !== 'members') {
+      fetchPosts(communityId, activeTab)
     }
-  }, [socket, activeTab])
+  }, 5000)
+
+  return () => clearInterval(pollInterval)
+}, [communityId, activeTab])
 
   const fetchCommunity = async (id) => {
     try {
       const response = await fetch(`/api/communities/${id}`)
-      const data = await response.json()
       
-      if (response.ok) {
+      // 👇 FIX: Check if response is OK first
+      if (!response.ok) {
+         console.error(`Error: ${response.status}`)
+         return // Stop here if 404 or 500
+      }
+
+      const data = await response.json() // Now safe to parse
+      
+      if (data.community) {
         setCommunity(data.community)
       }
     } catch (error) {
@@ -349,7 +347,7 @@ export default function CommunityDetailPage({ params }) {
 
       {/* Tabs */}
       {/* Tabs */}
-<div className="bg-white border-b sticky top-[48px] sm:top-[52px] z-10">
+<div className="bg-white border-b sticky top-[64px] sm:top-[72px] z-10">
         <div className="max-w-4xl mx-auto flex overflow-x-auto scrollbar-hide">
           <button
             onClick={() => handleTabChange('feed')}
@@ -552,7 +550,6 @@ export default function CommunityDetailPage({ params }) {
           onClose={() => setShowPostModal(false)}
           onSuccess={() => {
             setShowPostModal(false)
-            // Data will update via WebSocket, but also refresh to be safe
             fetchPosts(communityId, activeTab)
           }}
         />

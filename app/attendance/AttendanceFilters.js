@@ -9,8 +9,10 @@ export default function AttendanceFilters({
   stats = { all: 0, present: 0, absent: 0 },
 }) {
   return (
-    <div className="fixed left-0 right-0 z-10 bg-white border-b border-gray-100 shadow-sm"
-         style={{ top: '56px' }}>
+    <div
+  className="fixed left-0 right-0 z-10 bg-white border-b border-gray-100 shadow-sm
+             top-[64px] sm:top-[72px]"
+>
       <div className="max-w-4xl mx-auto px-4 py-3 space-y-3">
         {/* Status Filters */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">

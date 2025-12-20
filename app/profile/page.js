@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { User, Mail, Phone, MapPin, Edit, Trash2, Plus, LogOut, Package } from 'lucide-react'
 import Link from 'next/link'
+import { getStoredUser } from '@/lib/auth-utils'
+import NotificationSettingsButton from '@/components/NotificationSettingsButton'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -25,7 +27,7 @@ useEffect(() => {
       return
     }
 
-    const userData = JSON.parse(localStorage.getItem('user') || '{}')
+    const userData =  getStoredUser()
     setUser(userData)
     setEditData({
       name: userData.name || '',
@@ -48,7 +50,7 @@ useEffect(() => {
 const loadMyListings = async () => {
   try {
     const token = localStorage.getItem('token')
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    const user = getStoredUser()
     
     if (!token || !user.email) {
       setLoading(false)
@@ -326,6 +328,13 @@ const handleMarkAsSold = async (listingId) => {
     </button>
   </div>
 </div>
+
+{/* 2. Notification Settings (NEW) */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+          <h3 className="font-semibold text-gray-900 mb-3">App Settings</h3>
+          <NotificationSettingsButton userId={user?.id} />
+        </div>
+
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">

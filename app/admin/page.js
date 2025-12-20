@@ -1,100 +1,122 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Check, X, Clock } from 'lucide-react'
+import { ChevronLeft, Check, X, Clock, Trash2, Plus, Users, Shield } from 'lucide-react'
+import { getStoredUser } from '@/lib/auth-utils'
 
 export default function AdminDashboard() {
   const router = useRouter()
+  const [activeTab, setActiveTab] = useState('requests') // 'requests' or 'manage'
+  
   const [pendingRequests, setPendingRequests] = useState([])
+  const [allCommunities, setAllCommunities] = useState([])
+  
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState(null)
 
+  // New Community Form State
+  const [isCreating, setIsCreating] = useState(false)
+  const [newComm, setNewComm] = useState({ name: '', description: '', icon: '⚡' })
+
   useEffect(() => {
-    // Check if admin (you can add proper admin check here)
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    // For now, checking if email matches your admin email
-    if (user.email !== 'kandula_b220941ec@nitc.ac.in') {
+    const user = getStoredUser()
+    // Admin Check
+    if (user?.email !== 'kandula_b220941ec@nitc.ac.in') {
       alert('Access denied - Admin only')
       router.push('/')
       return
     }
+    fetchData()
+  }, [])
 
-    fetchPendingRequests()
-  }, [router])
-
-  const fetchPendingRequests = async () => {
+  const fetchData = async () => {
+    setLoading(true)
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/admin/community-requests', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const headers = { 'Authorization': `Bearer ${token}` }
 
-      const data = await response.json()
-      if (response.ok) {
-        setPendingRequests(data.requests)
-      }
+      // 1. Fetch Requests
+      const reqRes = await fetch('/api/admin/community-requests', { headers })
+      const reqData = await reqRes.json()
+      if (reqRes.ok) setPendingRequests(reqData.requests || [])
+
+      // 2. Fetch All Communities (for management)
+      const commRes = await fetch('/api/communities', { headers })
+      const commData = await commRes.json()
+      if (commRes.ok) setAllCommunities(commData.communities || [])
+
     } catch (error) {
-      console.error('Failed to fetch requests:', error)
+      console.error('Fetch error:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleApprove = async (requestId) => {
-    if (!confirm('Approve this community?')) return
-
+  // --- REQUEST ACTIONS ---
+  const handleRequestAction = async (requestId, action) => {
+    if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this request?`)) return
     setProcessingId(requestId)
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`/api/admin/community-requests/${requestId}/approve`, {
+      const res = await fetch(`/api/admin/community-requests/${requestId}/${action}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       })
-
-      if (response.ok) {
-        alert('Community approved! ✅')
-        fetchPendingRequests()
+      if (res.ok) {
+        fetchData() // Refresh both lists
       } else {
-        const data = await response.json()
-        alert(data.error || 'Failed to approve')
+        alert('Action failed')
       }
-    } catch (error) {
-      console.error('Approve error:', error)
-      alert('Failed to approve')
     } finally {
       setProcessingId(null)
     }
   }
 
-  const handleReject = async (requestId) => {
-    if (!confirm('Reject this community request?')) return
-
-    setProcessingId(requestId)
+  // --- MANAGE ACTIONS ---
+  const handleDeleteCommunity = async (commId) => {
+    if (!confirm('⚠️ Are you sure? This will delete the community and ALL posts inside it forever.')) return
+    
+    setProcessingId(commId)
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`/api/admin/community-requests/${requestId}/reject`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const res = await fetch(`/api/communities/${commId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
       })
-
-      if (response.ok) {
-        alert('Request rejected')
-        fetchPendingRequests()
+      if (res.ok) {
+        alert('Community deleted')
+        fetchData()
       } else {
-        const data = await response.json()
-        alert(data.error || 'Failed to reject')
+        alert('Failed to delete')
       }
-    } catch (error) {
-      console.error('Reject error:', error)
-      alert('Failed to reject')
     } finally {
       setProcessingId(null)
+    }
+  }
+
+  const handleCreateCommunity = async (e) => {
+    e.preventDefault()
+    if (!newComm.name || !newComm.description) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/communities', { // Direct creation endpoint
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ...newComm, color: '#2563eb' })
+      })
+
+      if (res.ok) {
+        alert('Community Created! 🎉')
+        setIsCreating(false)
+        setNewComm({ name: '', description: '', icon: '⚡' })
+        fetchData()
+      }
+    } catch (err) {
+      alert('Failed to create')
     }
   }
 
@@ -108,88 +130,164 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-nav-safe">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg safe-top">
-        <div className="max-w-4xl mx-auto">
-          <button 
-            onClick={() => router.push('/')}
-            className="flex items-center gap-2 mb-3 hover:opacity-80 active:scale-95 transition"
-          >
-            <ChevronLeft size={22} />
-            <span className="text-sm">Back</span>
-          </button>
-          
+      
+      {/* Header - Compact & Blue */}
+      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-700 to-indigo-800 text-white z-20 shadow-md safe-top">
+        <div className="max-w-4xl mx-auto px-4 h-[64px] sm:h-[72px] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Clock size={28} />
+            <button 
+              onClick={() => router.push('/')}
+              className="p-1 hover:bg-white/10 rounded-full transition-colors active:scale-95"
+            >
+              <ChevronLeft size={24} />
+            </button>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold">Admin Dashboard</h1>
-              <p className="text-purple-100 text-xs sm:text-sm">
-                {pendingRequests.length} pending requests
-              </p>
+              <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+                <Shield size={18} /> Admin Panel
+              </h1>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Requests List */}
-      <div className="max-w-4xl mx-auto p-4">
-        {pendingRequests.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg">
-            <Clock size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-600">No pending requests</p>
-          </div>
-        ) : (
+      <div className="pt-[80px] px-4 pb-8 max-w-4xl mx-auto">
+        
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 bg-white p-1 rounded-lg shadow-sm border border-gray-200">
+          <button
+            onClick={() => setActiveTab('requests')}
+            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${
+              activeTab === 'requests' 
+                ? 'bg-blue-100 text-blue-700' 
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Requests ({pendingRequests.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('manage')}
+            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${
+              activeTab === 'manage' 
+                ? 'bg-blue-100 text-blue-700' 
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Manage All
+          </button>
+        </div>
+
+        {/* TAB 1: REQUESTS */}
+        {activeTab === 'requests' && (
           <div className="space-y-4">
-            {pendingRequests.map(request => (
-              <div
-                key={request._id}
-                className="bg-white rounded-lg p-4 shadow-md border border-gray-200"
-              >
-                <div className="flex items-start gap-4">
-                  <div 
-                    className="text-4xl w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: `${request.color}20` }}
-                  >
-                    {request.icon}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-gray-900 text-lg mb-1">
-                      {request.name}
-                    </h3>
-                    <p className="text-gray-600 text-sm mb-2">
-                      {request.description}
-                    </p>
-                    <div className="text-xs text-gray-500">
-                      <p>Requested by: <span className="font-medium">{request.requestedByName}</span></p>
-                      <p>Email: {request.requestedByEmail}</p>
-                      <p>Date: {new Date(request.createdAt).toLocaleDateString()}</p>
+            {pendingRequests.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                <Clock size={40} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-500">No pending requests</p>
+              </div>
+            ) : (
+              pendingRequests.map(request => (
+                <div key={request._id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                  <div className="flex items-start gap-4">
+                    <div className="text-3xl w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                      {request.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900">{request.name}</h3>
+                      <p className="text-sm text-gray-600 mb-2">{request.description}</p>
+                      <div className="text-xs text-gray-400">
+                        Requested by: {request.requestedByName}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => handleRequestAction(request._id, 'approve')}
+                        disabled={processingId === request._id}
+                        className="px-3 py-1.5 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleRequestAction(request._id, 'reject')}
+                        disabled={processingId === request._id}
+                        className="px-3 py-1.5 bg-red-100 text-red-700 rounded text-xs font-bold hover:bg-red-200"
+                      >
+                        Reject
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => handleApprove(request._id)}
-                      disabled={processingId === request._id}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-                    >
-                      <Check size={16} />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleReject(request._id)}
-                      disabled={processingId === request._id}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-                    >
-                      <X size={16} />
-                      Reject
-                    </button>
-                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
+
+        {/* TAB 2: MANAGE COMMUNITIES */}
+        {activeTab === 'manage' && (
+          <div>
+            {/* Create New Button */}
+            <button
+              onClick={() => setIsCreating(!isCreating)}
+              className="w-full mb-4 py-3 bg-white border-2 border-dashed border-blue-300 text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+            >
+              <Plus size={20} />
+              {isCreating ? 'Cancel Creation' : 'Create New Community'}
+            </button>
+
+            {/* Create Form */}
+            {isCreating && (
+              <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100 animate-in fade-in slide-in-from-top-2">
+                <form onSubmit={handleCreateCommunity} className="space-y-3">
+                  <input
+                    placeholder="Community Name"
+                    className="w-full p-2 border rounded"
+                    value={newComm.name}
+                    onChange={e => setNewComm({...newComm, name: e.target.value})}
+                  />
+                  <input
+                    placeholder="Short Description"
+                    className="w-full p-2 border rounded"
+                    value={newComm.description}
+                    onChange={e => setNewComm({...newComm, description: e.target.value})}
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="Icon (e.g. 🚀)"
+                      className="w-20 p-2 border rounded text-center"
+                      value={newComm.icon}
+                      onChange={e => setNewComm({...newComm, icon: e.target.value})}
+                    />
+                    <button className="flex-1 bg-blue-600 text-white font-bold rounded hover:bg-blue-700">
+                      Create Now
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Existing List */}
+            <div className="space-y-3">
+              {allCommunities.map(comm => (
+                <div key={comm._id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl">{comm.icon}</div>
+                    <div>
+                      <h4 className="font-bold text-gray-900">{comm.name}</h4>
+                      <p className="text-xs text-gray-500">{comm.memberCount || 0} members</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteCommunity(comm._id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                    title="Delete Community"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   )
