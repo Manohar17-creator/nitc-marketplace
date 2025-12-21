@@ -33,7 +33,7 @@ export default function RootLayout({ children }) {
       
       <body className="h-screen flex flex-col bg-gray-50 antialiased overflow-hidden">
         
-        <GoogleAdSense pId="pub-2297395818809684" />
+        <GoogleAdSense pId="ca-pub-2297395818809684" />
 
         {/* 1. iOS PWA Install Prompt (Only shows on iPhone web) */}
         <IOSInstallPrompt />
