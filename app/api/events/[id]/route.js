@@ -3,10 +3,13 @@ import clientPromise from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
-// DELETE: Delete an event (Admin or Owner)
-export async function DELETE(request, { params }) {
+// DELETE: Delete an event
+export async function DELETE(request, context) {
   try {
-    const { id } = params
+    // ✅ FIX: Await params before using them
+    const params = await context.params
+    const id = params.id
+    
     const token = request.headers.get('authorization')?.split(' ')[1]
     const decoded = verifyToken(token)
 
@@ -20,8 +23,7 @@ export async function DELETE(request, { params }) {
 
     if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
 
-    // Check Permissions: Admin or Owner
-    // 👇 UPDATE WITH YOUR ADMIN EMAIL
+    // Check Permissions
     const isAdmin = user?.email === 'kandula_b220941ec@nitc.ac.in' 
     const isOwner = event.organizer.id.toString() === decoded.userId
 
@@ -34,14 +36,18 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ success: true, message: 'Event deleted' })
 
   } catch (error) {
+    console.error('Delete error:', error)
     return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
   }
 }
 
-// PUT: Edit an event (Owner only)
-export async function PUT(request, { params }) {
+// PUT: Edit an event
+export async function PUT(request, context) {
   try {
-    const { id } = params
+    // ✅ FIX: Await params here too
+    const params = await context.params
+    const id = params.id
+    
     const token = request.headers.get('authorization')?.split(' ')[1]
     const decoded = verifyToken(token)
 
@@ -56,7 +62,6 @@ export async function PUT(request, { params }) {
     const event = await db.collection('events').findOne({ _id: new ObjectId(id) })
     if (!event) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    // Only Owner can edit
     if (event.organizer.id.toString() !== decoded.userId) {
       return NextResponse.json({ error: 'Only the organizer can edit this' }, { status: 403 })
     }

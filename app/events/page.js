@@ -40,7 +40,8 @@ export default function EventsPage() {
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch('/api/events')
+      // Added 'next: { revalidate: 30 }' to hint caching behavior
+      const res = await fetch('/api/events', { next: { revalidate: 30 } })
       const data = await res.json()
       if (data.feed) setFeed(data.feed)
     } catch (error) { console.error(error) } finally { setLoading(false) }
@@ -134,7 +135,7 @@ export default function EventsPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
           {!isSearchVisible ? (
             <>
-              <div><h1 className="text-lg font-semibold">Campus Events</h1><p className="text-blue-100 text-xs">What's happening at NITC</p></div>
+              <div><h1 className="text-lg font-semibold">Campus Events</h1><p className="text-blue-100 text-xs">What is happening at NITC</p></div>
               <button onClick={toggleSearch} className="p-2 hover:bg-blue-700 rounded-full"><Search size={20} /></button>
             </>
           ) : (
