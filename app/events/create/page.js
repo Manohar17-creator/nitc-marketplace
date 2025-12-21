@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Calendar, MapPin, AlignLeft, Image as ImageIcon, Type } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, AlignLeft, Image as ImageIcon, Type, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export default function CreateEvent() {
@@ -14,6 +14,7 @@ export default function CreateEvent() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
 
   // Redirect if not logged in
   useEffect(() => {
@@ -62,28 +63,44 @@ export default function CreateEvent() {
       })
 
       if (res.ok) {
-        alert('Event created successfully! 🎉')
+        // Show success message
+        setSuccess(true)
         
-        // ✅ FIX: Force the Events page to reload data from the server
-        router.refresh() 
+        // Navigate immediately - don't wait for refresh
+        setTimeout(() => {
+          router.push('/events')
+          // Force refresh after navigation
+          router.refresh()
+        }, 500)
         
-        // Then navigate
-        router.push('/events')
       } else {
         const data = await res.json()
         setError(data.error || 'Failed to create event')
+        setLoading(false)
       }
     } catch (err) {
       setError('Something went wrong. Please try again.')
-    } finally {
       setLoading(false)
     }
+  }
+
+  // Success overlay
+  if (success) {
+    return (
+      <div className="fixed inset-0 bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center z-50">
+        <div className="text-center text-white">
+          <CheckCircle size={80} className="mx-auto mb-4 animate-bounce" />
+          <h2 className="text-3xl font-bold mb-2">Event Created! 🎉</h2>
+          <p className="text-green-100">Redirecting to events...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
       
-      {/* --- Header (Matches PostListing) --- */}
+      {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 sticky top-0 z-10 shadow-lg">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-3">
@@ -197,7 +214,15 @@ export default function CreateEvent() {
             disabled={loading}
             className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl active:scale-[0.98]"
           >
-            {loading ? 'Posting...' : 'Post Event'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Creating Event...
+              </span>
+            ) : 'Post Event'}
           </button>
           
         </form>

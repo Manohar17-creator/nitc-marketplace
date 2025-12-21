@@ -1,6 +1,6 @@
 {
-  "name": "NITC Marketplace",
-  "short_name": "NITC Market",
+  "name": "Unyfy",
+  "short_name": "Unyfy",
   "description": "Buy, Sell & Share on Campus - NIT Calicut",
   "start_url": "/",
   "display": "standalone",
@@ -48,5 +48,6 @@
       "url": "/profile",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "gcm_sender_id": "103953800507"
 }

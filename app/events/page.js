@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { MapPin, Calendar as CalIcon, Plus, Flag, Trash2, Heart, Search, Calendar, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import AdCard from '@/components/AdCard' // 👈 Using the nice Ad Card
+import AdCard from '@/components/AdCard'
 
 // Helper for "Read More"
 function EventDescription({ text }) {
@@ -28,7 +28,7 @@ export default function EventsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    fetchEvents()
+    // Get current user immediately (synchronous)
     const token = localStorage.getItem('token')
     if (token) {
       try {
@@ -36,22 +36,42 @@ export default function EventsPage() {
         setCurrentUser(payload)
       } catch (e) {}
     }
+
+    // Fetch events
+    fetchEvents()
+
+    // Set up polling for real-time updates every 30 seconds
+    const interval = setInterval(() => {
+      fetchEvents(true) // silent refresh
+    }, 30000)
+
+    return () => clearInterval(interval)
   }, [])
 
-  const fetchEvents = async () => {
+  const fetchEvents = async (silent = false) => {
+    if (!silent) setLoading(true)
+    
     try {
-      // Added 'next: { revalidate: 30 }' to hint caching behavior
-      const res = await fetch('/api/events', { next: { revalidate: 30 } })
+      const res = await fetch('/api/events', { 
+        cache: 'no-store', // Disable Next.js caching for fresh data
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       const data = await res.json()
       if (data.feed) setFeed(data.feed)
-    } catch (error) { console.error(error) } finally { setLoading(false) }
+    } catch (error) { 
+      console.error(error) 
+    } finally { 
+      if (!silent) setLoading(false) 
+    }
   }
 
   const handleInterest = async (eventId, index) => {
     const token = localStorage.getItem('token')
     if (!token) return router.push('/auth/login')
 
-    // Optimistic Update
+    // Optimistic Update - Instant UI feedback
     const newFeed = [...feed]
     const item = newFeed[index]
     if (item.type !== 'event') return
@@ -66,26 +86,42 @@ export default function EventsPage() {
     }
     setFeed(newFeed)
 
-    await fetch('/api/events/interested', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ eventId })
-    })
+    // Background API call
+    try {
+      await fetch('/api/events/interested', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ eventId })
+      })
+    } catch (error) {
+      // Revert on error
+      fetchEvents(true)
+    }
   }
 
   const handleDelete = async (eventId) => {
     if (!confirm('Are you sure you want to delete this event?')) return
     const token = localStorage.getItem('token')
     
-    const res = await fetch(`/api/events/${eventId}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    // Optimistic delete - Remove immediately from UI
+    const originalFeed = [...feed]
+    setFeed(feed.filter(item => item.data._id !== eventId))
 
-    if (res.ok) {
-      setFeed(feed.filter(item => item.data._id !== eventId))
-    } else {
-      alert('You cannot delete this event.')
+    try {
+      const res = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      if (!res.ok) {
+        // Revert if failed
+        setFeed(originalFeed)
+        alert('You cannot delete this event.')
+      }
+    } catch (error) {
+      // Revert on error
+      setFeed(originalFeed)
+      alert('Failed to delete event.')
     }
   }
 
@@ -93,13 +129,17 @@ export default function EventsPage() {
     if (!confirm('Report this event as spam/fake?')) return
     const token = localStorage.getItem('token')
     
-    const res = await fetch('/api/events/report', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ eventId })
-    })
+    try {
+      const res = await fetch('/api/events/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ eventId })
+      })
 
-    if (res.ok) alert('Report submitted. Thank you!')
+      if (res.ok) alert('Report submitted. Thank you!')
+    } catch (error) {
+      alert('Failed to submit report.')
+    }
   }
 
   const toggleSearch = () => {
@@ -112,8 +152,10 @@ export default function EventsPage() {
   const filteredFeed = feed.filter(item => {
     if (item.type === 'ad') return true
     const event = item.data
-    return event.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-           event.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const query = searchQuery.toLowerCase()
+    return event.title.toLowerCase().includes(query) || 
+           event.description.toLowerCase().includes(query) ||
+           event.venue.toLowerCase().includes(query)
   })
 
   // Format Date Helper
@@ -157,12 +199,21 @@ export default function EventsPage() {
       <main className="pt-[72px] pb-24 bg-gray-50">
         <div className="max-w-2xl mx-auto px-4 mt-4 grid gap-4">
           
-          {loading ? (
-             <div className="text-center py-10 text-gray-500">Loading events...</div>
+          {loading && feed.length === 0 ? (
+             // Skeleton loader for better UX
+             <div className="space-y-4">
+               {[1, 2, 3].map(i => (
+                 <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
+                   <div className="h-4 bg-gray-200 rounded w-3/4 mb-3"></div>
+                   <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
+                   <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
+                   <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+                 </div>
+               ))}
+             </div>
           ) : (
             filteredFeed.map((item, index) => {
               
-              // 👇 USE AdCard COMPONENT HERE (Fixes Ugly Ad Issue)
               if (item.type === 'ad') {
                  return <AdCard key={`ad-${index}`} ad={item.data} />
               }

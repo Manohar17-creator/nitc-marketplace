@@ -1,20 +1,20 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Search, Plus, Home, Book, Laptop, Ticket, Car, Building, PartyPopper, Tag, X } from 'lucide-react'
 import Link from 'next/link'
 import ListingCard from '@/components/ListingCard'
 import NotificationBell from '@/components/NotificationBell'
-import AdCard from '@/components/AdCard'          // 👈 Import Local Ad Component
-import AdSenseBanner from '@/components/AdSenseBanner' // 👈 Import Google Ad Component
+import AdCard from '@/components/AdCard'
+import AdSenseBanner from '@/components/AdSenseBanner'
 
 export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [listings, setListings] = useState([])
-  const [ads, setAds] = useState([]) // 👈 New State for Ads
+  const [ads, setAds] = useState([])
   const [loading, setLoading] = useState(true)
   const [isSearchVisible, setIsSearchVisible] = useState(false)
-  const [cachedListings, setCachedListings] = useState({})
 
   const categories = [
     { id: 'all', name: 'All', icon: Home, color: 'bg-blue-500' },
@@ -28,112 +28,163 @@ export default function HomePage() {
     { id: 'misc', name: 'Miscellaneous', icon: Tag, color: 'bg-gray-500' },
   ]
 
-  // --- Caching & Fetching Logic ---
-  const CACHE_TTL = 5 * 60 * 1000
-
+  // Smart caching with localStorage
+  const CACHE_DURATION = 2 * 60 * 1000 // 2 minutes (reduced from 5)
+  
+  // Debounce search to reduce API calls
   useEffect(() => {
-    const cacheKey = `${selectedCategory}-${searchQuery.trim()}`
-    const localCacheKey = `cached_listings_${cacheKey}`
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 300) // Wait 300ms after user stops typing
+    
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
-    // 1. Fetch Listings (Existing Logic)
-    const loadListings = async () => {
-      // Check Cache First
-      if (cachedListings[cacheKey]) {
-        setListings(cachedListings[cacheKey])
-        setLoading(false)
-        return
-      }
+  // Load data with smart caching
+  useEffect(() => {
+    loadData()
+  }, [selectedCategory, debouncedSearch])
+
+  const loadData = async () => {
+    const cacheKey = `listings_${selectedCategory}_${debouncedSearch}`
+    
+    // Try cache first
+    const cached = getCachedData(cacheKey)
+    if (cached) {
+      setListings(cached.listings)
+      setAds(cached.ads || [])
+      setLoading(false)
       
-      // Check LocalStorage
-      const localCached = localStorage.getItem(localCacheKey)
-      if (localCached) {
-        const { timestamp, listings } = JSON.parse(localCached)
-        if (Date.now() - timestamp < CACHE_TTL) {
-          setListings(listings)
-          setCachedListings(prev => ({ ...prev, [cacheKey]: listings }))
-          setLoading(false)
-          return
-        } else {
-          localStorage.removeItem(localCacheKey)
-        }
+      // Still fetch in background if cache is older than 1 minute
+      const age = Date.now() - cached.timestamp
+      if (age > 60 * 1000) {
+        fetchDataInBackground(cacheKey)
       }
-
-      // Fetch from API
-      setLoading(true)
-      try {
-        const params = new URLSearchParams()
-        if (selectedCategory !== 'all') params.append('category', selectedCategory)
-        if (searchQuery) params.append('search', searchQuery)
-
-        const response = await fetch(`/api/listings?${params}`)
-        const data = await response.json()
-
-        if (response.ok && Array.isArray(data.listings)) {
-          setListings(data.listings)
-          setCachedListings(prev => ({ ...prev, [cacheKey]: data.listings }))
-          localStorage.setItem(localCacheKey, JSON.stringify({ 
-            timestamp: Date.now(), 
-            listings: data.listings 
-          }))
-        }
-      } catch (err) {
-        console.error('Fetch failed:', err)
-      } finally {
-        setLoading(false)
-      }
+      return
     }
 
-    // 2. Fetch Ads (New Logic)
-    const fetchAds = async () => {
-      try {
-        const res = await fetch('/api/ads')
-        if (res.ok) {
-          const data = await res.json()
-          setAds(data.ads || [])
-        }
-      } catch (e) {
-        console.error("Failed to load ads", e)
-      }
-    }
+    // No cache, fetch fresh data
+    await fetchData(cacheKey)
+  }
 
-    loadListings()
-    fetchAds() // 👈 Trigger Ad Fetch
-
-  }, [selectedCategory, searchQuery])
-
-  const handleRefresh = async () => {
+  const fetchData = async (cacheKey) => {
     setLoading(true)
+    
     try {
       const params = new URLSearchParams()
       if (selectedCategory !== 'all') params.append('category', selectedCategory)
-      if (searchQuery) params.append('search', searchQuery)
+      if (debouncedSearch) params.append('search', debouncedSearch)
 
-      const [resListings, resAds] = await Promise.all([
+      // Fetch both in parallel
+      const [listingsRes, adsRes] = await Promise.all([
+        fetch(`/api/listings?${params}`, {
+          next: { revalidate: 60 } // Next.js cache for 60 seconds
+        }),
+        fetch('/api/ads', {
+          next: { revalidate: 300 } // Ads change less frequently
+        })
+      ])
+
+      const [listingsData, adsData] = await Promise.all([
+        listingsRes.json(),
+        adsRes.json()
+      ])
+
+      const newListings = listingsData.listings || []
+      const newAds = adsData.ads || []
+
+      setListings(newListings)
+      setAds(newAds)
+
+      // Cache the data
+      setCachedData(cacheKey, {
+        listings: newListings,
+        ads: newAds,
+        timestamp: Date.now()
+      })
+
+    } catch (error) {
+      console.error('Failed to fetch data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchDataInBackground = async (cacheKey) => {
+    // Silent background fetch to update cache
+    try {
+      const params = new URLSearchParams()
+      if (selectedCategory !== 'all') params.append('category', selectedCategory)
+      if (debouncedSearch) params.append('search', debouncedSearch)
+
+      const [listingsRes, adsRes] = await Promise.all([
         fetch(`/api/listings?${params}`),
         fetch('/api/ads')
       ])
 
-      if (resListings.ok) {
-        const data = await resListings.json()
-        setListings(data.listings)
-        // Update Cache
-        const cacheKey = `${selectedCategory}-${searchQuery.trim()}`
-        const localCacheKey = `cached_listings_${cacheKey}`
-        setCachedListings(prev => ({ ...prev, [cacheKey]: data.listings }))
-        localStorage.setItem(localCacheKey, JSON.stringify({ 
-          timestamp: Date.now(), 
-          listings: data.listings 
-        }))
-      }
+      const [listingsData, adsData] = await Promise.all([
+        listingsRes.json(),
+        adsRes.json()
+      ])
 
-      if (resAds.ok) {
-        const data = await resAds.json()
-        setAds(data.ads || [])
-      }
+      const newListings = listingsData.listings || []
+      const newAds = adsData.ads || []
 
-    } finally {
-      setLoading(false)
+      setListings(newListings)
+      setAds(newAds)
+
+      setCachedData(cacheKey, {
+        listings: newListings,
+        ads: newAds,
+        timestamp: Date.now()
+      })
+    } catch (error) {
+      console.error('Background fetch failed:', error)
     }
+  }
+
+  // Cache helpers
+  const getCachedData = (key) => {
+    try {
+      const cached = localStorage.getItem(key)
+      if (!cached) return null
+
+      const data = JSON.parse(cached)
+      const age = Date.now() - data.timestamp
+
+      // Return cache if less than 2 minutes old
+      if (age < CACHE_DURATION) {
+        return data
+      }
+
+      // Clean up old cache
+      localStorage.removeItem(key)
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  const setCachedData = (key, data) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(data))
+      
+      // Clean old cache entries (keep only last 10)
+      const allKeys = Object.keys(localStorage).filter(k => k.startsWith('listings_'))
+      if (allKeys.length > 10) {
+        allKeys.slice(0, -10).forEach(k => localStorage.removeItem(k))
+      }
+    } catch (error) {
+      // Quota exceeded, clear old caches
+      const allKeys = Object.keys(localStorage).filter(k => k.startsWith('listings_'))
+      allKeys.forEach(k => localStorage.removeItem(k))
+    }
+  }
+
+  const handleRefresh = () => {
+    const cacheKey = `listings_${selectedCategory}_${debouncedSearch}`
+    localStorage.removeItem(cacheKey)
+    fetchData(cacheKey)
   }
 
   const toggleSearch = () => {
@@ -143,55 +194,93 @@ export default function HomePage() {
     }
   }
 
-  // 👇 RENDER LOGIC: Mix Listings and Ads
-  const renderContent = () => {
-    if (loading && listings.length === 0) return <div className="text-center py-10">Loading...</div>
-    if (listings.length === 0) return <div className="text-center py-10">No listings</div>
+  // Memoize mixed content to avoid recalculation
+  const mixedContent = useMemo(() => {
+    if (listings.length === 0) return []
 
-    const mixedContent = []
-    
-    // 1. Filter only LOCAL ads from the fetched ads
+    const content = []
     const localAds = ads.filter(ad => ad.type === 'local')
-    
     let localAdIndex = 0
 
     listings.forEach((listing, index) => {
-      mixedContent.push({ type: 'listing', data: listing })
+      content.push({ type: 'listing', data: listing, key: listing._id })
       
-      // Inject Ad after every 3rd listing (3, 6, 9...)
+      // Inject ad after every 3rd listing
       if ((index + 1) % 3 === 0) {
-        
-        // 🎯 PRIORITY RULE:
-        // 1. Is there a unique Local Ad we haven't shown yet?
         if (localAdIndex < localAds.length) {
-          // Yes, show Local Ad
-          mixedContent.push({ type: 'local_ad', data: localAds[localAdIndex] })
-          localAdIndex++ // Move to next local ad
+          content.push({ 
+            type: 'local_ad', 
+            data: localAds[localAdIndex],
+            key: `local-ad-${localAdIndex}`
+          })
+          localAdIndex++
         } else {
-          // No more unique local ads -> Show Online Ad (Google)
-          mixedContent.push({ type: 'google_ad', data: null })
+          content.push({ 
+            type: 'google_ad', 
+            data: null,
+            key: `google-ad-${index}`
+          })
         }
       }
     })
 
+    return content
+  }, [listings, ads])
+
+  const renderContent = () => {
+    // Skeleton loader
+    if (loading && listings.length === 0) {
+      return (
+        <div className="grid gap-4 pb-8">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
+              <div className="flex gap-3 p-3">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-200 rounded-lg flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                  <div className="h-3 bg-gray-200 rounded w-2/3" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    if (listings.length === 0) {
+      return (
+        <div className="text-center py-10 text-gray-500">
+          <div className="mb-3">
+            <Home size={48} className="mx-auto text-gray-300" />
+          </div>
+          <p className="text-lg font-medium">No listings found</p>
+          <p className="text-sm">Try changing the category or search term</p>
+        </div>
+      )
+    }
+
     return (
       <div className="grid gap-4 pb-8 transition-all duration-300">
-        {mixedContent.map((item, i) => {
-          if (item.type === 'listing') return <ListingCard key={item.data._id} listing={item.data} />
-          
-          if (item.type === 'local_ad') return <AdCard key={`local-ad-${i}`} ad={item.data} />
-          
-          if (item.type === 'google_ad') return <AdSenseBanner key={`google-ad-${i}`} dataAdSlot="YOUR_REAL_SLOT_ID" />
+        {mixedContent.map((item) => {
+          if (item.type === 'listing') {
+            return <ListingCard key={item.key} listing={item.data} />
+          }
+          if (item.type === 'local_ad') {
+            return <AdCard key={item.key} ad={item.data} />
+          }
+          if (item.type === 'google_ad') {
+            return <AdSenseBanner key={item.key} dataAdSlot="YOUR_REAL_SLOT_ID" />
+          }
         })}
       </div>
     )
   }
 
-
   return (
     <div className="bg-gray-50 min-h-screen">
       
-      {/* --- Fixed Header --- */}
+      {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px] transition-all duration-300">
           {!isSearchVisible ? (
@@ -233,7 +322,6 @@ export default function HomePage() {
       </div>
 
       <main className="pt-[72px] pb-24 bg-gray-50">
-        
         <div className="max-w-6xl mx-auto px-4">
           
           {/* Post Lost/Found Button */}
@@ -276,35 +364,35 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Listings List (Mixed with Ads) */}
+          {/* Listings */}
           <div className="mb-6 mt-2">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-gray-900 text-base sm:text-lg">
                 {selectedCategory === 'all' ? 'All Listings' : categories.find(c => c.id === selectedCategory)?.name}
                 <span className="text-gray-500 font-normal ml-2">({listings?.length ?? 0})</span>
               </h2>
-              <button onClick={handleRefresh} disabled={loading} className="text-sm text-blue-600 font-medium active:scale-95">
+              <button 
+                onClick={handleRefresh} 
+                disabled={loading} 
+                className="text-sm text-blue-600 font-medium active:scale-95 disabled:opacity-50"
+              >
                 ↻ Refresh
               </button>
             </div>
 
-            {/* 👇 THIS RENDERS THE ADS + LISTINGS */}
             {renderContent()}
-
           </div>
-        
         </div>
 
         {/* FAB */}
         <Link href="/post">
           <button 
-            className="fixed right-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 rounded-full shadow-lg hover:shadow-xl hover:scale-110 z-40"
+            className="fixed right-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 rounded-full shadow-lg hover:shadow-xl hover:scale-110 z-40 transition-all active:scale-[0.98]"
             style={{ bottom: '90px' }}
           >
             <Plus size={24} className="sm:w-7 sm:h-7" />
           </button>
         </Link>
-
       </main>
     </div>
   )

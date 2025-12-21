@@ -224,12 +224,17 @@ const fetchStats = async () => {
   }, [stats])
 
   if (loading) {
-    return (
-      <div className="bg-gray-50 overflow-x-hidden flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        {/* Spinner */}
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 border-t-transparent bg-gradient-to-r from-blue-600 to-blue-700 mx-auto mb-4" style={{ borderRadius: '50%' }}></div>
+        {/* Optional loading text */}
+        <p className="text-blue-600 font-medium">Loading...</p>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
   return (
     <div className="bg-gray-50 overflow-x-hidden flex flex-col pb-nav-safe">
