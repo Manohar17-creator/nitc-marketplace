@@ -1,8 +1,8 @@
-// Firebase Cloud Messaging Service Worker
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+// public/firebase-messaging-sw.js
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
-// Initialize Firebase in Service Worker
+// ✅ This config uses your NEW Correct Key ending in ...WAgWo
 firebase.initializeApp({
   apiKey: "AIzaSyA44DLUAwtcRLCNdf2GmiqxanKBYFWAgWo",
   authDomain: "nitc-marketplace-5eddc.firebaseapp.com",
@@ -12,31 +12,23 @@ firebase.initializeApp({
   appId: "1:1011003738424:web:4b709b460548f8ab8819cd"
 });
 
-
-
 const messaging = firebase.messaging();
 
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message', payload);
   
-  const notificationTitle = payload.notification?.title || 'NITC Marketplace';
+  const notificationTitle = payload.notification?.title || 'New Message';
   const notificationOptions = {
-    body: payload.notification?.body || 'New notification',
-    icon: '/icon-192.png',
+    body: payload.notification?.body || 'You have a new notification',
+    icon: '/icon-192.png', // Ensure this icon exists in public folder
     badge: '/icon-192.png',
-    tag: payload.data?.postId || 'notification',
-    data: {
-      url: payload.data?.url || '/'
-    },
-    requireInteraction: false,
-    vibrate: [200, 100, 200]
+    data: payload.data
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
