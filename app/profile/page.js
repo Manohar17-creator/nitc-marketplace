@@ -5,6 +5,7 @@ import { User, Mail, Phone, MapPin, Edit, Trash2, Plus, LogOut, Package } from '
 import Link from 'next/link'
 import { getStoredUser } from '@/lib/auth-utils'
 import NotificationSettingsButton from '@/components/NotificationSettingsButton'
+import NotificationDebugPanel from '@/components/NotificationDebugPanel'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -340,6 +341,7 @@ const handleMarkAsSold = async (listingId) => {
           <NotificationSettingsButton userId={user?.id} />
         </div>
 
+<NotificationDebugPanel />
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">

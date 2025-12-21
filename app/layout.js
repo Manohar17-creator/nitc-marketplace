@@ -1,8 +1,9 @@
 import './globals.css'
 import MobileNavbar from '@/components/MobileNavbar'
-import IOSInstallPrompt from '@/components/IOSInstallPrompt' // Make sure you created this file from our previous steps
+import IOSInstallPrompt from '@/components/IOSInstallPrompt'
 import ForegroundToast from '@/components/ForegroundToast'
 import GoogleAdSense from '@/components/GoogleAdSense'
+import ServiceWorkerUpdater from '@/components/ServiceWorkerUpdater' // 👈 1. Import this
 
 export const metadata = {
   title: 'Unyfy',
@@ -33,19 +34,19 @@ export default function RootLayout({ children }) {
       
       <body className="h-screen flex flex-col bg-gray-50 antialiased overflow-hidden">
         
+        {/* 2. Add the Updater here to run on every page load */}
+        <ServiceWorkerUpdater />
+        
         <GoogleAdSense pId="ca-pub-2297395818809684" />
 
-        {/* 1. iOS PWA Install Prompt (Only shows on iPhone web) */}
         <IOSInstallPrompt />
 
         <ForegroundToast />
         
-        {/* 2. Main Content */}
         <main className="flex-1 overflow-y-auto overscroll-contain pb-nav-safe">
           {children}
         </main>
         
-        {/* 3. Bottom Navigation */}
         <MobileNavbar />
       </body>
     </html>

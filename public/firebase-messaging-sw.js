@@ -4,6 +4,18 @@ self.addEventListener('message', (event) => {
   }
 });
 
+self.addEventListener('install', (event) => {
+  console.log('[SW] Installing new service worker...')
+  self.skipWaiting() // Immediately activate
+})
+
+self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating new service worker...')
+  event.waitUntil(
+    clients.claim() // Take control immediately
+  )
+})
+
 // public/firebase-messaging-sw.js
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
