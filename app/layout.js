@@ -3,7 +3,7 @@ import MobileNavbar from '@/components/MobileNavbar'
 import IOSInstallPrompt from '@/components/IOSInstallPrompt'
 import ForegroundToast from '@/components/ForegroundToast'
 import GoogleAdSense from '@/components/GoogleAdSense'
-import ServiceWorkerUpdater from '@/components/ServiceWorkerUpdater' // 👈 1. Import this
+import ServiceWorkerUpdater from '@/components/ServiceWorkerUpdater' // 👈 1. Import the updater
 
 export const metadata = {
   title: 'Unyfy',
@@ -34,7 +34,7 @@ export default function RootLayout({ children }) {
       
       <body className="h-screen flex flex-col bg-gray-50 antialiased overflow-hidden">
         
-        {/* 2. Add the Updater here to run on every page load */}
+        {/* 2. Add the Updater here. It runs silently in the background. */}
         <ServiceWorkerUpdater />
         
         <GoogleAdSense pId="ca-pub-2297395818809684" />

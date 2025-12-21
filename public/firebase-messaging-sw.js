@@ -5,17 +5,16 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing new service worker...')
-  self.skipWaiting() // Immediately activate
-})
+  console.log('[SW] 📥 Installing new version & skipping waiting...');
+  self.skipWaiting(); // 👈 Forces the new worker to activate immediately
+});
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating new service worker...')
+  console.log('[SW] 🚀 Activating new version & claiming clients...');
   event.waitUntil(
-    clients.claim() // Take control immediately
-  )
-})
-
+    clients.claim() // 👈 Forces the new worker to control the page immediately
+  );
+});
 // public/firebase-messaging-sw.js
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
