@@ -12,6 +12,12 @@ firebase.initializeApp({
   appId: "1:1011003738424:web:4b709b460548f8ab8819cd"
 });
 
+console.log('🔥 SW Firebase Config:', {
+  apiKey: firebase.app().options.apiKey?.substring(0, 20) + '...',
+  projectId: firebase.app().options.projectId,
+  appId: firebase.app().options.appId
+});
+
 const messaging = firebase.messaging();
 
 // Handle background messages
