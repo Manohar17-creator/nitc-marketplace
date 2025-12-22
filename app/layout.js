@@ -12,7 +12,7 @@ export const metadata = {
   manifest: '/manifest.json',
   
   verification: {
-    google: 'UFoLXe7cPLIGWO3NK8Z3F2KW1UwvBbYFe6bLLihMhfk', 
+    google: '2dP_WjCJK3z_YknGuSNZ02TqTY9UEWDETPiIsBsk6Ag', 
   },
 
   appleWebApp: {
