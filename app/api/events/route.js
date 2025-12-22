@@ -70,23 +70,15 @@ export async function POST(request) {
     const db = client.db('nitc-marketplace')
     
     const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
-    
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    // ✅ 1. RATE LIMITING (Spam Protection)
-    const COOLDOWN_MS = 60 * 1000; // 1 Minute
+    // 1. Rate Limiting
+    const COOLDOWN_MS = 60 * 1000;
     const now = Date.now();
-    // Re-use 'lastPostedAt' so users can't spam posts AND events at the same time
     const lastActionTime = user.lastPostedAt ? new Date(user.lastPostedAt).getTime() : 0;
 
     if (now - lastActionTime < COOLDOWN_MS) {
-      const waitSeconds = Math.ceil((COOLDOWN_MS - (now - lastActionTime)) / 1000);
-      return NextResponse.json(
-        { error: `Please wait ${waitSeconds}s before creating another event.` },
-        { status: 429 }
-      );
+      return NextResponse.json({ error: `Please wait before creating event.` }, { status: 429 });
     }
 
     const data = await request.json()
@@ -98,8 +90,9 @@ export async function POST(request) {
 
     const dateObj = new Date(eventDate)
     const expiryObj = new Date(dateObj)
-    expiryObj.setDate(expiryObj.getDate() + 1) // Expire 1 day after event date
+    expiryObj.setDate(expiryObj.getDate() + 1)
 
+    // 2. Create Event
     const newEvent = {
       title,
       description,
@@ -107,25 +100,39 @@ export async function POST(request) {
       image: image || null,
       eventDate: dateObj,
       expiryDate: expiryObj, 
-      organizer: {
-        id: user._id,
-        name: user.name,
-        // email: user.email // Optional: Add if you want strict ownership checks later
-      },
+      organizer: { id: user._id, name: user.name },
       interested: [],
       reports: [],
       hidden: false,
       createdAt: new Date()
     }
 
-    // ✅ 2. Insert Event & Update User Cooldown in parallel
-    await Promise.all([
-      db.collection('events').insertOne(newEvent),
-      db.collection('users').updateOne(
-        { _id: user._id },
-        { $set: { lastPostedAt: new Date() } }
-      )
-    ]);
+    const result = await db.collection('events').insertOne(newEvent)
+    
+    await db.collection('users').updateOne(
+      { _id: user._id }, 
+      { $set: { lastPostedAt: new Date() } }
+    )
+
+    // 3. ✅ NOTIFICATION LOGIC: Notify All Users (Campus Wide Event)
+    // Note: If you have >10k users, consider a "Global Notification" logic instead of loop
+    const allUsers = await db.collection('users').find({}, { projection: { _id: 1 } }).toArray()
+    
+    if (allUsers.length > 0) {
+      const notifications = allUsers.map(u => ({
+        userId: u._id,
+        type: 'event', // Matches frontend icon
+        title: '📅 New Campus Event',
+        message: `${title} at ${venue}`,
+        link: `/events`, // Or specific event link
+        resourceId: result.insertedId, // Store ID to check if deleted later
+        resourceType: 'event',
+        read: false,
+        createdAt: new Date()
+      }))
+
+      await db.collection('notifications').insertMany(notifications)
+    }
 
     return NextResponse.json({ success: true, message: 'Event created!' })
 

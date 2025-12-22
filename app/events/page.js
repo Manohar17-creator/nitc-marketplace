@@ -293,7 +293,7 @@ export default function EventsPage() {
         <Link href="/events/create">
           <button 
             className="fixed right-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 rounded-full shadow-lg hover:shadow-xl hover:scale-110 z-40 transition-all active:scale-95"
-            style={{ bottom: '90px' }}
+            style={{ bottom: 'calc(90px + env(safe-area-inset-bottom))' }}
           >
             <Plus size={24} className="sm:w-7 sm:h-7" />
           </button>

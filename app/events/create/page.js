@@ -101,23 +101,24 @@ export default function CreateEvent() {
     <div className="min-h-screen bg-gray-50">
       
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 sticky top-0 z-10 shadow-lg">
-        <div className="max-w-2xl mx-auto">
+      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-50 shadow-lg safe-top">
+        <div className="max-w-2xl mx-auto h-[64px] sm:h-[72px] flex items-center px-4">
           <div className="flex items-center gap-3">
             <button 
                 onClick={() => router.back()}
-                className="p-2 -ml-2 hover:bg-blue-700 rounded-lg transition-colors"
+                className="p-2 -ml-2 hover:bg-white/20 rounded-full transition-colors flex-shrink-0 active:scale-95"
             >
-                <ArrowLeft size={22} />
+                <ArrowLeft size={24} />
             </button>
             <div>
-                <h1 className="text-2xl font-bold">Post New Event</h1>
-                <p className="text-blue-100 text-sm">Share an upcoming event</p>
+                <h1 className="text-lg sm:text-xl font-bold leading-tight">Post New Event</h1>
+                <p className="text-blue-100 text-xs sm:text-sm leading-none mt-0.5">Share an upcoming event</p>
             </div>
           </div>
         </div>
       </div>
-
+      {/* Spacer to prevent content from hiding behind fixed header */}
+      <div className="h-[64px] sm:h-[72px]" />
       <div className="max-w-2xl mx-auto p-4 pb-8">
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
           

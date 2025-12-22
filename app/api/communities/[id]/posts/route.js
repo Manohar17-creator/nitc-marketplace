@@ -44,61 +44,43 @@ export async function POST(request, context) {
   try {
     const params = await context.params
     const id = params.id
-
     const token = request.headers.get('authorization')?.split(' ')[1]
     
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const decoded = verifyToken(token)
-    if (!decoded) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
 
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
-    // 1. Check if user is a member
+    // 1. Member Check
     const member = await db.collection('community_members').findOne({
       userId: new ObjectId(decoded.userId),
       communityId: new ObjectId(id)
     })
+    if (!member) return NextResponse.json({ error: 'Must be a member' }, { status: 403 })
 
-    if (!member) {
-      return NextResponse.json(
-        { error: 'Must be a member to post' },
-        { status: 403 }
-      )
-    }
+    const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
 
-    const user = await db.collection('users').findOne({
-      _id: new ObjectId(decoded.userId)
-    })
-
-    // 2. 🛡️ RATE LIMITING (Spam Protection)
-    const COOLDOWN_MS = 60 * 1000; // 1 Minute
+    // 2. Rate Limiting
+    const COOLDOWN_MS = 60 * 1000;
     const now = Date.now();
     const lastPosted = user.lastPostedAt ? new Date(user.lastPostedAt).getTime() : 0;
 
     if (now - lastPosted < COOLDOWN_MS) {
-      const waitSeconds = Math.ceil((COOLDOWN_MS - (now - lastPosted)) / 1000);
-      return NextResponse.json(
-        { error: `Please wait ${waitSeconds}s before posting again.` },
-        { status: 429 } // 429 = Too Many Requests
-      );
+      return NextResponse.json({ error: `Please wait before posting.` }, { status: 429 });
     }
 
     const data = await request.json()
     const { type, title, content, embedUrl, embedType } = data
 
-    // 3. Create the Post
+    // 3. Create Post
     const newPost = {
       communityId: new ObjectId(id),
       authorId: new ObjectId(decoded.userId),
       authorName: user.name,
       authorEmail: user.email,
-      authorImage: user.image || null, // Good to have for the UI
+      authorImage: user.image || null,
       type,
       title: title || '',
       content,
@@ -110,30 +92,45 @@ export async function POST(request, context) {
 
     const result = await db.collection('community_posts').insertOne(newPost)
 
-    // 4. Update stats and timestamp (Concurrent operations)
+    // 4. Update Stats
     await Promise.all([
-      // Increment post count
-      db.collection('communities').updateOne(
-        { _id: new ObjectId(id) },
-        { $inc: { postCount: 1 } }
-      ),
-      // Update user's last posted time (for rate limiting)
-      db.collection('users').updateOne(
-        { _id: new ObjectId(decoded.userId) },
-        { $set: { lastPostedAt: new Date() } }
-      )
+      db.collection('communities').updateOne({ _id: new ObjectId(id) }, { $inc: { postCount: 1 } }),
+      db.collection('users').updateOne({ _id: new ObjectId(decoded.userId) }, { $set: { lastPostedAt: new Date() } })
     ]);
 
-    return NextResponse.json({
-      message: 'Post created',
-      postId: result.insertedId
-    })
+    // 5. ✅ NOTIFICATION LOGIC: Notify other members
+    // Get members excluding the author
+    const communityMembers = await db.collection('community_members')
+      .find({ 
+        communityId: new ObjectId(id), 
+        userId: { $ne: new ObjectId(decoded.userId) } 
+      })
+      .project({ userId: 1 })
+      .toArray()
+
+    if (communityMembers.length > 0) {
+      // Get community name for the message
+      const community = await db.collection('communities').findOne({ _id: new ObjectId(id) })
+      
+      const notifications = communityMembers.map(m => ({
+        userId: m.userId,
+        type: 'post', // Matches your frontend icon
+        title: `New Post in ${community?.name || 'Community'}`,
+        message: `${user.name} posted: "${(title || content).substring(0, 30)}..."`,
+        link: `/community/${id}`, // Link to the community
+        resourceId: result.insertedId, // Store ID to check if deleted later
+        resourceType: 'community_post',
+        read: false,
+        createdAt: new Date()
+      }))
+
+      await db.collection('notifications').insertMany(notifications)
+    }
+
+    return NextResponse.json({ message: 'Post created', postId: result.insertedId })
 
   } catch (error) {
     console.error('Create post error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create post' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to create post' }, { status: 500 })
   }
 }

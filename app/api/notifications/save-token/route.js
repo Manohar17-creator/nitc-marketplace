@@ -20,10 +20,17 @@ export async function POST(request) {
 
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
+    const userId = new ObjectId(decoded.userId)
 
     // Store or update FCM token
+    await db.collection('users').updateMany(
+      { fcmToken: fcmToken, _id: { $ne: userId } },
+      { $unset: { fcmToken: "" } }
+    )
+
+    // 2. Save the token for the CURRENT user
     await db.collection('users').updateOne(
-      { _id: new ObjectId(decoded.userId) },
+      { _id: userId },
       { 
         $set: { 
           fcmToken,

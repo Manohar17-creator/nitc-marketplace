@@ -140,14 +140,15 @@ export default function PostDetailPage({ params }) {
     <div className="min-h-screen bg-gray-50 pb-nav-safe">
       
       {/* Header - Fixed */}
-      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
-        <div className="max-w-4xl mx-auto p-3 sm:p-4">
+     <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-50 shadow-lg safe-top">
+        {/* 2. Added specific height and flex alignment */}
+        <div className="max-w-4xl mx-auto h-[64px] sm:h-[72px] flex items-center px-4">
           <button 
             onClick={() => router.back()}
-            className="flex items-center gap-2 hover:opacity-80 active:scale-95 transition"
+            className="flex items-center gap-2 hover:bg-white/20 p-2 -ml-2 rounded-full transition-colors active:scale-95"
           >
-            <ChevronLeft size={22} />
-            <span className="text-sm">Back to Community</span>
+            <ChevronLeft size={24} />
+            <span className="font-medium">Back to Community</span>
           </button>
         </div>
       </div>

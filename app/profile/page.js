@@ -341,7 +341,6 @@ const handleMarkAsSold = async (listingId) => {
           <NotificationSettingsButton userId={user?.id} />
         </div>
 
-<NotificationDebugPanel />
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">

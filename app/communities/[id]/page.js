@@ -375,9 +375,8 @@ export default function CommunityDetailPage({ params }) {
 
 
 
-      {/* Tabs */}
-      {/* Tabs */}
-<div className="bg-white border-b sticky top-[64px] sm:top-[72px] z-10">
+      {/* 1. Tabs Bar (Fixed Position) */}
+      <div className="bg-white border-b fixed top-[64px] sm:top-[72px] left-0 right-0 z-40 shadow-sm">
         <div className="max-w-4xl mx-auto flex overflow-x-auto scrollbar-hide">
           <button
             onClick={() => handleTabChange('feed')}
@@ -421,6 +420,8 @@ export default function CommunityDetailPage({ params }) {
           </button>
         </div>
       </div>
+
+      <div className="h-[46px]" />
 
       {/* Content */}
       {/* Content */}

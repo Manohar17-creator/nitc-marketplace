@@ -40,7 +40,11 @@ export default function IOSInstallPrompt() {
   if (!showPrompt) return null
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-6 animate-in slide-in-from-bottom-full duration-700">
+    // ⚠️ CHANGED: 
+    // 1. 'bottom-0' -> 'bottom-20' (Lifts it up by ~80px to clear the navbar)
+    // 2. 'z-50' -> 'z-[100]' (Ensures it sits on top of everything)
+    <div className="fixed bottom-20 left-0 right-0 z-[100] p-4 pb-6 animate-in slide-in-from-bottom-10 duration-700">
+      
       {/* Glassmorphism Container */}
       <div className="bg-white/95 backdrop-blur-xl border border-gray-200 shadow-2xl rounded-2xl p-5 max-w-md mx-auto relative">
         
@@ -55,12 +59,11 @@ export default function IOSInstallPrompt() {
         <div className="flex gap-4 items-start">
           {/* App Icon Preview */}
           <div className="flex-shrink-0">
-             {/* Ensure '/icon-192x192.png' exists in your public folder */}
             <img 
               src="/icon-192x192.png" 
               alt="App Icon" 
               className="w-16 h-16 rounded-xl shadow-lg border border-gray-100" 
-              onError={(e) => { e.target.style.display = 'none' }} // Hide if missing
+              onError={(e) => { e.target.style.display = 'none' }} 
             />
           </div>
 
@@ -84,7 +87,7 @@ export default function IOSInstallPrompt() {
           </div>
         </div>
 
-        {/* Decorative Triangle Pointer (Pointing to bottom center) */}
+        {/* Decorative Triangle Pointer */}
         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/95 backdrop-blur-xl rotate-45 border-r border-b border-gray-200"></div>
       </div>
     </div>

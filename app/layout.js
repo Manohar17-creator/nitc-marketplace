@@ -43,7 +43,7 @@ export default function RootLayout({ children }) {
 
         <ForegroundToast />
         
-        <main className="flex-1 overflow-y-auto overscroll-contain pb-nav-safe">
+        <main className="flex-1 overflow-y-auto  pb-nav-safe">
           {children}
         </main>
         

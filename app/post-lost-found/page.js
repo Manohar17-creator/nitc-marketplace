@@ -188,64 +188,22 @@ const removeImage = (index) => {
       
       {/* --- NEW HEADER START --- */}
       {/* Spacer to prevent content from hiding behind fixed header */}
-      <div className="h-[64px] sm:h-[72px]" />
 
-      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-50 shadow-lg safe-top">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px] transition-all duration-300">
-          {!isSearchVisible ? (
-            <>
-              {/* Back Button & Title */}
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <button
-                  onClick={() => router.back()}
-                  className="p-1 hover:bg-blue-500 rounded-full active:scale-95 transition"
-                >
-                  <ArrowLeft size={24} />
-                </button>
-
-                <div className="leading-tight">
-                  <h1 className="text-lg sm:text-xl font-bold">Lost & Found</h1>
-                  <p className="text-blue-100 text-xs sm:text-sm">Help reunite items</p>
-                </div>
-              </div>
-
-              {/* Search Toggle Icon */}
-              <button
-                onClick={() => setIsSearchVisible(true)}
-                className="p-2 hover:bg-blue-700 active:bg-blue-800 rounded-full transition-all active:scale-95"
-              >
-                <Search size={22} className="text-white" />
-              </button>
-            </>
-          ) : (
-            /* Expanded Search Input */
-            <div className="flex items-center gap-2 w-full transition-all duration-300 animate-in fade-in slide-in-from-right-4">
-              <button
-                onClick={() => {
-                  setIsSearchVisible(false);
-                  setSearchQuery('');
-                }}
-                className="p-2 hover:bg-blue-700 active:bg-blue-800 rounded-full transition-all active:scale-95"
-              >
-                <X size={20} className="text-white" />
-              </button>
-
-              <div className="flex-1 relative">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-200"
-                  size={16}
-                />
-                <input
-                  type="text"
-                  placeholder="Search lost items..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  autoFocus
-                  className="w-full pl-10 pr-4 py-2 rounded-lg text-sm bg-blue-500/40 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300 border border-blue-400/30"
-                />
-              </div>
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white sticky top-0 z-50 shadow-lg w-full safe-top">
+        <div className="max-w-2xl mx-auto h-[64px] sm:h-[72px] flex items-center px-4">
+          <div className="flex items-center gap-3">
+            <button 
+                onClick={() => router.back()}
+                className="p-2 -ml-2 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
+            >
+                <ArrowLeft size={24} />
+            </button>
+            
+            <div>
+                <h1 className="text-lg sm:text-xl font-bold leading-tight">Post New Listing</h1>
+                <p className="text-blue-100 text-xs sm:text-sm leading-none mt-0.5">Fill in the details below</p>
             </div>
-          )}
+          </div>
         </div>
       </div>
       {/* --- NEW HEADER END --- */}

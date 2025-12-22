@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation' // 👈 Added router
-import { Bell } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Bell, Calendar, MessageCircle, Radio, Info } from 'lucide-react' // 👈 Import more icons
 
 export default function NotificationBell() {
-  const router = useRouter() // 👈 Initialize router
+  const router = useRouter()
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
@@ -28,6 +28,7 @@ export default function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications()
+    // Poll every 30 seconds for new updates
     const interval = setInterval(fetchNotifications, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -42,14 +43,11 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // 👇 UPDATED HANDLE CLICK
   const handleNotificationClick = async (notif) => {
-    // 1. Mark as read immediately (UI)
     if (!notif.read) {
       setNotifications(prev => prev.map(n => n._id === notif._id ? { ...n, read: true } : n))
       setUnreadCount(prev => Math.max(0, prev - 1))
       
-      // API Call in background
       const token = localStorage.getItem('token')
       await fetch(`/api/notifications/${notif._id}/read`, {
         method: 'POST',
@@ -57,18 +55,23 @@ export default function NotificationBell() {
       })
     }
 
-    // 2. Close Dropdown
     setIsOpen(false)
+    if (notif.link) router.push(notif.link)
+  }
 
-    // 3. Navigate if link exists
-    if (notif.link) {
-      router.push(notif.link)
+  // 🎨 Helper to get icon based on notification type
+  const getIcon = (type) => {
+    switch (type) {
+      case 'event': return <Calendar size={18} className="text-orange-500" />
+      case 'post': return <MessageCircle size={18} className="text-green-500" />
+      case 'broadcast': return <Radio size={18} className="text-red-500" />
+      default: return <Info size={18} className="text-blue-500" />
     }
   }
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button onClick={() => setIsOpen(!isOpen)} className="relative p-2 hover:bg-white/10 rounded-full transition-colors">
+      <button onClick={() => setIsOpen(!isOpen)} className="relative p-2 hover:bg-blue-50/10 rounded-full transition-colors">
         <Bell className="text-white" size={24} />
         {unreadCount > 0 && (
           <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-blue-600">
@@ -91,16 +94,23 @@ export default function NotificationBell() {
               notifications.map(notif => (
                 <div 
                   key={notif._id} 
-                  onClick={() => handleNotificationClick(notif)} // 👈 Updated Handler
-                  className={`p-4 border-b hover:bg-gray-50 transition-colors cursor-pointer ${notif.read ? 'opacity-60' : 'bg-blue-50/50'}`}
+                  onClick={() => handleNotificationClick(notif)}
+                  className={`p-4 border-b hover:bg-gray-50 transition-colors cursor-pointer ${notif.read ? 'opacity-60 bg-white' : 'bg-blue-50/40'}`}
                 >
                   <div className="flex gap-3">
-                    <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${notif.read ? 'bg-transparent' : 'bg-blue-600'}`} />
+                    {/* Icon Container */}
+                    <div className="mt-1 shrink-0">
+                       {getIcon(notif.type)}
+                    </div>
+                    
                     <div className="flex-1">
                       <h4 className="text-sm font-bold text-gray-900">{notif.title}</h4>
-                      <p className="text-sm text-gray-600 mt-0.5">{notif.message}</p>
+                      <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">{notif.message}</p>
                       <p className="text-[10px] text-gray-400 mt-2">{new Date(notif.createdAt).toLocaleDateString()}</p>
                     </div>
+                    
+                    {/* Unread Dot */}
+                    {!notif.read && <div className="mt-2 w-2 h-2 rounded-full bg-blue-600 shrink-0" />}
                   </div>
                 </div>
               ))
