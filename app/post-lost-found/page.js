@@ -189,12 +189,12 @@ const removeImage = (index) => {
       {/* --- NEW HEADER START --- */}
       {/* Spacer to prevent content from hiding behind fixed header */}
 
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white sticky top-0 z-50 shadow-lg w-full safe-top">
+<div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-50 shadow-lg safe-top">
         <div className="max-w-2xl mx-auto h-[64px] sm:h-[72px] flex items-center px-4">
           <div className="flex items-center gap-3">
             <button 
                 onClick={() => router.back()}
-                className="p-2 -ml-2 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
+                className="p-2 -ml-2 hover:bg-white/20 rounded-full transition-colors flex-shrink-0 active:scale-95"
             >
                 <ArrowLeft size={24} />
             </button>

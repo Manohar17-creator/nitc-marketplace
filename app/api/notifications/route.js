@@ -16,61 +16,65 @@ export async function GET(request) {
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
-    // 1. Fetch RAW notifications for this user
+    // 1. Fetch RAW notifications
     const rawNotifications = await db.collection('notifications')
       .find({ userId: new ObjectId(decoded.userId) })
       .sort({ createdAt: -1 })
-      .limit(50)
+      .limit(60) // Fetch slightly more to account for duplicates/deletions
       .toArray()
 
-    // 2. 🧹 CLEANUP LOGIC: Filter out deleted items
-    // We check if the resource linked to the notification still exists.
-    
     const validNotifications = []
     
-    // We will collect IDs to batch query (Optimization)
+    // Arrays to collect IDs for verification
     const listingIds = []
     const postIds = []
     const eventIds = []
 
+    // 🔍 Step 1: Categorize IDs
     rawNotifications.forEach(n => {
-      // If it's a system broadcast, it's always valid
-      if (n.type === 'broadcast') return;
+      if (!n.resourceId) return // Skip legacy items here, handled in loop below
       
-      // If it has a resourceId, categorize it
-      if (n.resourceId) {
-        if (n.resourceType === 'listing') listingIds.push(new ObjectId(n.resourceId))
-        if (n.resourceType === 'community_post') postIds.push(new ObjectId(n.resourceId))
-        if (n.resourceType === 'event') eventIds.push(new ObjectId(n.resourceId))
-      }
+      if (n.resourceType === 'listing') listingIds.push(new ObjectId(n.resourceId))
+      else if (n.resourceType === 'community_post') postIds.push(new ObjectId(n.resourceId))
+      else if (n.resourceType === 'event') eventIds.push(new ObjectId(n.resourceId))
     })
 
-    // Batch fetch existing IDs
+    // 🔍 Step 2: Batch Fetch Existence
     const [existingListings, existingPosts, existingEvents] = await Promise.all([
       listingIds.length > 0 ? db.collection('listings').find({ _id: { $in: listingIds } }).project({ _id: 1 }).toArray() : [],
       postIds.length > 0 ? db.collection('community_posts').find({ _id: { $in: postIds } }).project({ _id: 1 }).toArray() : [],
       eventIds.length > 0 ? db.collection('events').find({ _id: { $in: eventIds } }).project({ _id: 1 }).toArray() : []
     ])
 
-    // Create sets for fast O(1) lookup
     const validListingSet = new Set(existingListings.map(i => i._id.toString()))
     const validPostSet = new Set(existingPosts.map(i => i._id.toString()))
     const validEventSet = new Set(existingEvents.map(i => i._id.toString()))
+    
+    // Set to track duplicates
+    const seenIds = new Set()
 
-    // 3. Filter the list
+    // 🔍 Step 3: Strict Filtering
     for (const notif of rawNotifications) {
       let isValid = true
 
-      // Broadcasts are always valid
-      if (notif.type === 'broadcast') {
-        validNotifications.push(notif)
-        continue
+      // A. DEDUPLICATION CHECK
+      // If we've already seen this exact Notification ID, skip it
+      if (seenIds.has(notif._id.toString())) continue;
+      seenIds.add(notif._id.toString());
+      
+      // Also check by Resource ID (prevent 2 notifications for same post)
+      const uniqueKey = notif.resourceId ? notif.resourceId.toString() : notif._id.toString();
+      // (Optional: You can add logic here if you want strict unique resources)
+
+      // B. LEGACY / DELETED CHECK
+      // If it's a specific type but MISSING resourceId -> It's old garbage -> Invalid
+      if (['listing', 'post', 'event'].includes(notif.type) && !notif.resourceId) {
+        isValid = false
       }
 
-      // Check specific resource types
+      // C. EXISTENCE CHECK
       if (notif.resourceId) {
         const idStr = notif.resourceId.toString()
-        
         if (notif.resourceType === 'listing' && !validListingSet.has(idStr)) isValid = false
         if (notif.resourceType === 'community_post' && !validPostSet.has(idStr)) isValid = false
         if (notif.resourceType === 'event' && !validEventSet.has(idStr)) isValid = false
@@ -79,8 +83,10 @@ export async function GET(request) {
       if (isValid) {
         validNotifications.push(notif)
       } else {
-        // OPTIONAL: Delete the dead notification from DB so we don't check it again
-        // db.collection('notifications').deleteOne({ _id: notif._id }) 
+        // 🧹 Auto-Delete Dead Notifications (Clean DB)
+        try {
+           await db.collection('notifications').deleteOne({ _id: notif._id })
+        } catch (e) { /* ignore error */ }
       }
     }
 

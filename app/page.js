@@ -385,14 +385,14 @@ export default function HomePage() {
         </div>
 
         {/* FAB */}
-        <Link href="/post">
-          <button 
-            className="fixed right-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 rounded-full shadow-lg hover:shadow-xl hover:scale-110 z-40 transition-all active:scale-[0.98]"
-            style={{ bottom: 'calc(90px + env(safe-area-inset-bottom))' }}
-          >
-            <Plus size={24} className="sm:w-7 sm:h-7" />
-          </button>
-        </Link>
+        <div className="py-6 text-center flex justify-center gap-4">
+          <Link href="/privacy-policy" className="text-xs text-gray-400 hover:text-gray-600 underline transition-colors">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="text-xs text-gray-400 hover:text-gray-600 underline transition-colors">
+            Terms & Conditions
+          </Link>
+        </div>
       </main>
     </div>
   )

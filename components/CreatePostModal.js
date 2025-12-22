@@ -42,7 +42,7 @@ export default function CreatePostModal({ onClose, onSubmit }) {
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 pb-32 sm:pb-6">
+        <div className="flex-1 overflow-y-auto p-4 pb-40 sm:pb-6 bg-gray-50">
           <form id="create-post-form" onSubmit={handleSubmit}>
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
