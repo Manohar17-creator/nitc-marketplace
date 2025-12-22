@@ -188,6 +188,7 @@ const removeImage = (index) => {
       
       {/* --- NEW HEADER START --- */}
       {/* Spacer to prevent content from hiding behind fixed header */}
+<div className="h-[64px] sm:h-[72px]" />
 
 <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-50 shadow-lg safe-top">
         <div className="max-w-2xl mx-auto h-[64px] sm:h-[72px] flex items-center px-4">

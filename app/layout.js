@@ -11,7 +11,6 @@ export const metadata = {
   description: 'Where campus comes together',
   manifest: '/manifest.json',
   
-  // ✅ GOOGLE VERIFICATION (HTML Tag Method)
   verification: {
     google: 'UFoLXe7cPLIGWO3NK8Z3F2KW1UwvBbYFe6bLLihMhfk', 
   },
@@ -48,14 +47,18 @@ export default function RootLayout({ children }) {
         <main className="flex-1 overflow-y-auto pb-nav-safe">
           {children}
 
-          <div className="py-6 text-center">
-            <Link 
-              href="/privacy-policy" 
-              className="text-xs text-gray-400 hover:text-gray-600 underline transition-colors"
-            >
+          {/* ✅ COMPACT FOOTER: Reduced 'py-6' to 'py-2' */}
+         <div className="mt-0 text-center text-[10px] leading-none text-gray-400">
+            <Link href="/privacy-policy" className="hover:text-gray-600 underline">
               Privacy Policy
             </Link>
+            {" · "}
+            <Link href="/terms" className="hover:text-gray-600 underline">
+              Terms & Conditions
+            </Link>
           </div>
+
+
         </main>
         
         <MobileNavbar />
