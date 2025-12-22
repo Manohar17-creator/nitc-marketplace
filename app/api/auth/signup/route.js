@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
-import { hashPassword, generateToken, isNITCEmail } from '@/lib/auth'
+import { hashPassword, isNITCEmail } from '@/lib/auth' // Removed generateToken since we don't use it here anymore
 
 export async function POST(request) {
   try {
     const { name, email, phone, password } = await request.json()
 
-    // Validate NITC email
+    // 1. Validate NITC email
     if (!isNITCEmail(email)) {
       return NextResponse.json(
         { error: 'Please use your NITC email (@nitc.ac.in)' },
@@ -14,7 +14,7 @@ export async function POST(request) {
       )
     }
 
-    // Validate password
+    // 2. Validate password
     if (password.length < 6) {
       return NextResponse.json(
         { error: 'Password must be at least 6 characters' },
@@ -25,7 +25,7 @@ export async function POST(request) {
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
-    // Check if user exists
+    // 3. Check if user exists
     const existingUser = await db.collection('users').findOne({ email })
     if (existingUser) {
       return NextResponse.json(
@@ -34,23 +34,20 @@ export async function POST(request) {
       )
     }
 
-    // Hash password
+    // 4. Hash password & Create User
     const hashedPassword = await hashPassword(password)
 
-
-
-    // Create user
     const result = await db.collection('users').insertOne({
       name,
       email,
       phone,
       password: hashedPassword,
-      isVerified: false,  // Ensure this is always false
+      isVerified: false,
       createdAt: new Date(),
       listings: []
     })
 
-    // After inserting user, send verification email
+    // 5. Send Verification Email (Internal API Call)
     try {
       await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/send-verification`, {
         method: 'POST',
@@ -62,41 +59,13 @@ export async function POST(request) {
       })
     } catch (emailError) {
       console.error('Failed to send verification email:', emailError)
+      // We continue anyway, user can click "Resend" later if needed
     }
 
-    // Return response WITHOUT token (remove token from response)
+    // 6. Return Success (BUT NO TOKEN)
+    // We do NOT log them in yet. They must verify first.
     return NextResponse.json({
       message: 'Account created! Please check your email to verify.',
-      user: { 
-        id: result.insertedId,
-        name, 
-        email, 
-        phone,
-        isVerified: false 
-      }
-    })
-
-    // After inserting user, send verification email
-    
-    // Generate token
-    const token = generateToken(result.insertedId.toString())
-
-    try {
-    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/send-verification`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-        email,
-        userId: result.insertedId.toString()
-        })
-    })
-    } catch (emailError) {
-    console.error('Failed to send verification email:', emailError)
-    }
-
-    return NextResponse.json({
-      message: 'Account created successfully!',
-      token,
       user: { 
         id: result.insertedId,
         name, 

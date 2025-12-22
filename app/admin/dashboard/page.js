@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react' // 👈 Import Suspense
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft, Trash2, Plus, Shield, Search, Ban, UserCheck, Bell, Send, Eye, MousePointer2, Calendar, Edit2 } from 'lucide-react'
+import { ChevronLeft, Trash2, Plus, Shield, Search, Ban, UserCheck, Bell, Send, Eye, MousePointer2, MousePointerClick, Calendar, Edit2 } from 'lucide-react'
 import { getStoredUser } from '@/lib/auth-utils'
 
 // 👇 1. Rename your main component to 'DashboardContent' (Internal use only)
@@ -718,29 +718,73 @@ const handleSubmitAd = async (e) => {
             )}
 
             <div className="space-y-4">
-              {allAds.map(ad => (
-                <div key={ad._id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex gap-4 relative">
-                  <img src={ad.imageUrl} className="w-20 h-20 object-cover rounded-md bg-gray-100" />
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900">{ad.title}</h3>
-                    <p className="text-xs text-gray-500 mb-2">{ad.description}</p>
-                    <div className="flex gap-2">
-                      <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold uppercase">{ad.type}</span>
-                      <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold uppercase">{ad.placement || 'all'}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col gap-2">
-                    <button onClick={() => startEditAd(ad)} className="text-blue-500 hover:bg-blue-50 p-2 rounded">
-                      <Edit2 size={16} />
-                    </button>
-                    <button onClick={() => handleDeleteAd(ad._id)} className="text-red-400 hover:bg-red-50 p-2 rounded">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+  {allAds.map(ad => (
+    <div key={ad._id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex gap-4 relative">
+      
+      {/* 1. Ad Image */}
+      <img 
+        src={ad.imageUrl} 
+        alt={ad.title}
+        className="w-24 h-24 object-cover rounded-md bg-gray-100 border border-gray-100" 
+      />
+
+      {/* 2. Ad Details */}
+      <div className="flex-1 flex flex-col justify-between">
+        <div>
+          <h3 className="font-bold text-gray-900 line-clamp-1">{ad.title}</h3>
+          <p className="text-xs text-gray-500 mb-2 line-clamp-1">{ad.description || 'No description'}</p>
+          
+          <div className="flex gap-2 mb-3">
+            <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${
+              ad.type === 'local' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+            }`}>
+              {ad.type}
+            </span>
+            <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold uppercase">
+              {ad.placement || 'all'}
+            </span>
+          </div>
+        </div>
+
+        {/* 👇 NEW: Stats Row (Impressions & Clicks) */}
+        <div className="flex items-center gap-4 text-xs font-medium text-gray-600 bg-gray-50 p-2 rounded-md border border-gray-100 w-fit">
+          <div className="flex items-center gap-1.5" title="Total Views">
+            <Eye size={14} className="text-blue-500" />
+            <span>{ad.views || 0}</span>
+          </div>
+          <div className="w-px h-3 bg-gray-300"></div> {/* Divider */}
+          <div className="flex items-center gap-1.5" title="Total Clicks">
+            <MousePointerClick size={14} className="text-green-500" />
+            <span>{ad.clicks || 0}</span>
+          </div>
+          <div className="w-px h-3 bg-gray-300"></div> {/* Divider */}
+          <div className="text-[10px] text-gray-400">
+             CTR: {((ad.clicks || 0) / (ad.views || 1) * 100).toFixed(1)}%
+          </div>
+        </div>
+      </div>
+      
+      {/* 3. Action Buttons */}
+      <div className="flex flex-col gap-2 border-l pl-3 ml-1 border-dashed border-gray-200 justify-center">
+        <button 
+          onClick={() => startEditAd(ad)} 
+          className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors"
+          title="Edit Ad"
+        >
+          <Edit2 size={18} />
+        </button>
+        <button 
+          onClick={() => handleDeleteAd(ad._id)} 
+          className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded transition-colors"
+          title="Delete Ad"
+        >
+          <Trash2 size={18} />
+        </button>
+      </div>
+
+    </div>
+  ))}
+</div>
           </div>
         )}
 
