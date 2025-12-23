@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, Plus, Home, Book, Laptop, Ticket, Car, Building, PartyPopper, Tag, X } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Search, Plus, Home, Book, Laptop, Ticket, Car, Building, PartyPopper, Tag, X, Download } from 'lucide-react'
 import Link from 'next/link'
 import ListingCard from '@/components/ListingCard'
 import NotificationBell from '@/components/NotificationBell'
@@ -16,6 +16,10 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [isSearchVisible, setIsSearchVisible] = useState(false)
 
+  // 🆕 State for Install Prompt
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [isInstallVisible, setIsInstallVisible] = useState(false)
+
   const categories = [
     { id: 'all', name: 'All', icon: Home, color: 'bg-blue-500' },
     { id: 'lost-found', name: 'Lost & Found', icon: Search, color: 'bg-indigo-500' },
@@ -28,61 +32,80 @@ export default function HomePage() {
     { id: 'misc', name: 'Miscellaneous', icon: Tag, color: 'bg-gray-500' },
   ]
 
+  // 🆕 1. Listen for the 'beforeinstallprompt' event
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault()
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e)
+      // Show our UI
+      setIsInstallVisible(true)
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    }
+  }, [])
+
+  // 🆕 2. Handle Install Click
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return
+
+    // Show the install prompt
+    deferredPrompt.prompt()
+
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice
+    
+    // We've used the prompt, and can't use it again, discard it
+    setDeferredPrompt(null)
+    setIsInstallVisible(false)
+  }
+
   // Smart caching with localStorage
-  const CACHE_DURATION = 2 * 60 * 1000 // 2 minutes (reduced from 5)
+  const CACHE_DURATION = 2 * 60 * 1000 
   
-  // Debounce search to reduce API calls
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery)
-    }, 300) // Wait 300ms after user stops typing
+    }, 300) 
     
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  // Load data with smart caching
   useEffect(() => {
     loadData()
   }, [selectedCategory, debouncedSearch])
 
   const loadData = async () => {
     const cacheKey = `listings_${selectedCategory}_${debouncedSearch}`
-    
-    // Try cache first
     const cached = getCachedData(cacheKey)
     if (cached) {
       setListings(cached.listings)
       setAds(cached.ads || [])
       setLoading(false)
-      
-      // Still fetch in background if cache is older than 1 minute
       const age = Date.now() - cached.timestamp
       if (age > 60 * 1000) {
         fetchDataInBackground(cacheKey)
       }
       return
     }
-
-    // No cache, fetch fresh data
     await fetchData(cacheKey)
   }
 
   const fetchData = async (cacheKey) => {
     setLoading(true)
-    
     try {
       const params = new URLSearchParams()
       if (selectedCategory !== 'all') params.append('category', selectedCategory)
       if (debouncedSearch) params.append('search', debouncedSearch)
 
-      // Fetch both in parallel
       const [listingsRes, adsRes] = await Promise.all([
-        fetch(`/api/listings?${params}`, {
-          next: { revalidate: 60 } // Next.js cache for 60 seconds
-        }),
-        fetch('/api/ads', {
-          next: { revalidate: 300 } // Ads change less frequently
-        })
+        fetch(`/api/listings?${params}`, { next: { revalidate: 60 } }),
+        fetch('/api/ads', { next: { revalidate: 300 } })
       ])
 
       const [listingsData, adsData] = await Promise.all([
@@ -96,12 +119,7 @@ export default function HomePage() {
       setListings(newListings)
       setAds(newAds)
 
-      // Cache the data
-      setCachedData(cacheKey, {
-        listings: newListings,
-        ads: newAds,
-        timestamp: Date.now()
-      })
+      setCachedData(cacheKey, { listings: newListings, ads: newAds, timestamp: Date.now() })
 
     } catch (error) {
       console.error('Failed to fetch data:', error)
@@ -111,7 +129,6 @@ export default function HomePage() {
   }
 
   const fetchDataInBackground = async (cacheKey) => {
-    // Silent background fetch to update cache
     try {
       const params = new URLSearchParams()
       if (selectedCategory !== 'all') params.append('category', selectedCategory)
@@ -126,38 +143,26 @@ export default function HomePage() {
         listingsRes.json(),
         adsRes.json()
       ])
-
-      const newListings = listingsData.listings || []
-      const newAds = adsData.ads || []
-
-      setListings(newListings)
-      setAds(newAds)
-
-      setCachedData(cacheKey, {
-        listings: newListings,
-        ads: newAds,
-        timestamp: Date.now()
+      
+      setListings(listingsData.listings || [])
+      setAds(adsData.ads || [])
+      setCachedData(cacheKey, { 
+        listings: listingsData.listings || [], 
+        ads: adsData.ads || [], 
+        timestamp: Date.now() 
       })
     } catch (error) {
       console.error('Background fetch failed:', error)
     }
   }
 
-  // Cache helpers
   const getCachedData = (key) => {
     try {
       const cached = localStorage.getItem(key)
       if (!cached) return null
-
       const data = JSON.parse(cached)
       const age = Date.now() - data.timestamp
-
-      // Return cache if less than 2 minutes old
-      if (age < CACHE_DURATION) {
-        return data
-      }
-
-      // Clean up old cache
+      if (age < CACHE_DURATION) return data
       localStorage.removeItem(key)
       return null
     } catch {
@@ -168,14 +173,11 @@ export default function HomePage() {
   const setCachedData = (key, data) => {
     try {
       localStorage.setItem(key, JSON.stringify(data))
-      
-      // Clean old cache entries (keep only last 10)
       const allKeys = Object.keys(localStorage).filter(k => k.startsWith('listings_'))
       if (allKeys.length > 10) {
         allKeys.slice(0, -10).forEach(k => localStorage.removeItem(k))
       }
     } catch (error) {
-      // Quota exceeded, clear old caches
       const allKeys = Object.keys(localStorage).filter(k => k.startsWith('listings_'))
       allKeys.forEach(k => localStorage.removeItem(k))
     }
@@ -191,44 +193,32 @@ export default function HomePage() {
     setIsSearchVisible(!isSearchVisible)
     if (!isSearchVisible) {
       setTimeout(() => document.getElementById('search-input')?.focus(), 100)
+    } else {
+      setSearchQuery('')
     }
   }
 
-  // Memoize mixed content to avoid recalculation
   const mixedContent = useMemo(() => {
     if (listings.length === 0) return []
-
     const content = []
     const localAds = ads.filter(ad => ad.type === 'local')
     let localAdIndex = 0
 
     listings.forEach((listing, index) => {
       content.push({ type: 'listing', data: listing, key: listing._id })
-      
-      // Inject ad after every 3rd listing
       if ((index + 1) % 3 === 0) {
         if (localAdIndex < localAds.length) {
-          content.push({ 
-            type: 'local_ad', 
-            data: localAds[localAdIndex],
-            key: `local-ad-${localAdIndex}`
-          })
+          content.push({ type: 'local_ad', data: localAds[localAdIndex], key: `local-ad-${localAdIndex}` })
           localAdIndex++
         } else {
-          content.push({ 
-            type: 'google_ad', 
-            data: null,
-            key: `google-ad-${index}`
-          })
+          content.push({ type: 'google_ad', data: null, key: `google-ad-${index}` })
         }
       }
     })
-
     return content
   }, [listings, ads])
 
   const renderContent = () => {
-    // Skeleton loader
     if (loading && listings.length === 0) {
       return (
         <div className="grid gap-4 pb-8">
@@ -263,15 +253,9 @@ export default function HomePage() {
     return (
       <div className="grid gap-4 pb-8 transition-all duration-300">
         {mixedContent.map((item) => {
-          if (item.type === 'listing') {
-            return <ListingCard key={item.key} listing={item.data} />
-          }
-          if (item.type === 'local_ad') {
-            return <AdCard key={item.key} ad={item.data} />
-          }
-          if (item.type === 'google_ad') {
-            return <AdSenseBanner key={item.key} dataAdSlot="YOUR_REAL_SLOT_ID" />
-          }
+          if (item.type === 'listing') return <ListingCard key={item.key} listing={item.data} />
+          if (item.type === 'local_ad') return <AdCard key={item.key} ad={item.data} />
+          if (item.type === 'google_ad') return <AdSenseBanner key={item.key} dataAdSlot="YOUR_REAL_SLOT_ID" />
         })}
       </div>
     )
@@ -324,6 +308,36 @@ export default function HomePage() {
       <main className="pt-[72px] pb-24 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4">
           
+          {/* 🆕 ANDROID INSTALL BANNER */}
+          {/* This only shows if the browser fires the event (mostly Android) */}
+          {isInstallVisible && (
+            <div className="mt-4 mb-2 bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl p-4 text-white shadow-lg flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/10 p-2 rounded-lg">
+                  <Download size={24} className="text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Install Unyfy App</h3>
+                  <p className="text-xs text-gray-300">Add to Home Screen for faster access</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                 <button 
+                  onClick={() => setIsInstallVisible(false)}
+                  className="p-2 text-gray-400 hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+                <button 
+                  onClick={handleInstallClick}
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors"
+                >
+                  Install
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Post Lost/Found Button */}
           <div className="mt-4 mb-4">
             <Link

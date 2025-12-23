@@ -601,22 +601,29 @@ const handleSubmitAd = async (e) => {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Notification Type</label>
-                <div className="flex gap-4">
-                  {['info', 'success', 'warning', 'error'].map(t => (
-                    <label key={t} className="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-2 rounded-lg hover:bg-gray-100 border border-transparent has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                      <input 
-                        type="radio" 
-                        name="type" 
-                        className="accent-blue-600"
-                        checked={broadcastForm.type === t}
-                        onChange={() => setBroadcastForm({...broadcastForm, type: t})}
-                      />
-                      <span className="capitalize text-sm font-medium">{t}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+  <label className="block text-sm font-semibold text-gray-700 mb-2">Notification Type</label>
+  <div className="flex gap-4">
+    {['info', 'success', 'warning', 'error'].map(t => (
+      <label 
+        key={t} 
+        className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border transition-all ${
+          broadcastForm.type === t 
+            ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 text-blue-700' // ✅ Added text-blue-700
+            : 'bg-gray-50 border-transparent hover:bg-gray-100 text-gray-700'   // ✅ Added text-gray-700
+        }`}
+      >
+        <input 
+          type="radio" 
+          name="type" 
+          className="hidden" 
+          checked={broadcastForm.type === t}
+          onChange={() => setBroadcastForm({...broadcastForm, type: t})}
+        />
+        <span className="capitalize text-sm font-semibold">{t}</span>
+      </label>
+    ))}
+</div>
+</div>
 
               <button 
                 disabled={sendingBroadcast}
