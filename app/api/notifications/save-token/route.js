@@ -22,20 +22,20 @@ export async function POST(request) {
     const db = client.db('nitc-marketplace')
     const userId = new ObjectId(decoded.userId)
 
-    // Store or update FCM token
+    // 1. CLEANUP: Remove this token from ANY other user
+    // (Prevents one device receiving notifs for the wrong account if they switched users)
     await db.collection('users').updateMany(
-      { fcmToken: fcmToken, _id: { $ne: userId } },
-      { $unset: { fcmToken: "" } }
+      { fcmTokens: fcmToken, _id: { $ne: userId } },
+      { $pull: { fcmTokens: fcmToken } } // 👈 Removes from array
     )
 
-    // 2. Save the token for the CURRENT user
+    // 2. SAVE: Add to the Current User's Array
+    // $addToSet ensures we don't add the same token twice
     await db.collection('users').updateOne(
       { _id: userId },
       { 
-        $set: { 
-          fcmToken,
-          fcmTokenUpdatedAt: new Date()
-        }
+        $addToSet: { fcmTokens: fcmToken }, // 👈 Supports multiple devices
+        $set: { fcmTokenUpdatedAt: new Date() }
       }
     )
 

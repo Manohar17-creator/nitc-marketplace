@@ -6,6 +6,8 @@ import ListingCard from '@/components/ListingCard'
 import NotificationBell from '@/components/NotificationBell'
 import AdCard from '@/components/AdCard'
 import AdSenseBanner from '@/components/AdSenseBanner'
+import { getMessaging, getToken } from 'firebase/messaging'
+import { app } from '@/lib/firebase'
 
 export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -49,6 +51,51 @@ export default function HomePage() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     }
   }, [])
+
+  useEffect(() => {
+  const setupNotifications = async () => {
+    try {
+      // 1. Check if user is logged in (We need a user to save the token to!)
+      const authToken = localStorage.getItem('token')
+      if (!authToken) return 
+
+      const permission = await Notification.requestPermission()
+      if (permission === 'granted') {
+        const messaging = getMessaging(app)
+        
+        // 2. Get FCM Token
+        const fcmToken = await getToken(messaging, { 
+          vapidKey: 'YOUR_VAPID_KEY_FROM_FIREBASE_CONSOLE' 
+        })
+
+        if (fcmToken) {
+          // 3. Subscribe to "All Users" (For Broadcasts)
+          await fetch('/api/notifications/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: fcmToken })
+          })
+
+          // 4. ✅ SAVE TO MONGO DB (For Personal Alerts)
+          await fetch('/api/notifications/save-token', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}` // 👈 Send Auth Token
+            },
+            body: JSON.stringify({ fcmToken })
+          })
+          
+          console.log('✅ Notification setup complete')
+        }
+      }
+    } catch (error) {
+      console.error('Notification setup failed:', error)
+    }
+  }
+
+  setupNotifications()
+}, [])
 
   // 🆕 2. Handle Install Click
   const handleInstallClick = async () => {
