@@ -5,14 +5,14 @@ export default function AttendanceFilters({
   setFilterStatus,
   filterReason,
   setFilterReason,
-  reasonCounts = { placement: 0, medical: 0 },
+  reasonCounts = { placement: 0, medical: 0, sports: 0 }, // ✅ Added sports default
   stats = { all: 0, present: 0, absent: 0 },
 }) {
   return (
     <div
-  className="fixed left-0 right-0 z-10 bg-white border-b border-gray-100 shadow-sm
+      className="fixed left-0 right-0 z-10 bg-white border-b border-gray-100 shadow-sm
              top-[64px] sm:top-[72px]"
->
+    >
       <div className="max-w-4xl mx-auto px-4 py-3 space-y-3">
         {/* Status Filters */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
@@ -37,7 +37,7 @@ export default function AttendanceFilters({
 
         {/* Reason Filters */}
         {(filterStatus === 'absent' || filterStatus === 'all') && stats.absent > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
             <span className="flex-shrink-0 font-medium text-gray-700 text-sm">Reason:</span>
             <button
               onClick={() => setFilterReason('all')}
@@ -63,11 +63,22 @@ export default function AttendanceFilters({
               onClick={() => setFilterReason('medical')}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                 filterReason === 'medical'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-red-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               🏥 Medical ({reasonCounts.medical || 0})
+            </button>
+            {/* 🆕 Added Sports Button */}
+            <button
+              onClick={() => setFilterReason('sports')}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                filterReason === 'sports'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🏆 Sports ({reasonCounts.sports || 0})
             </button>
           </div>
         )}

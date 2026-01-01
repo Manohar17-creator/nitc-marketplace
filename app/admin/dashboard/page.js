@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react' // 👈 Import Suspense
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft, Trash2, Plus, Shield, Search, Ban, UserCheck, Bell, Send, Eye, MousePointer2, MousePointerClick, Calendar, Edit2 } from 'lucide-react'
+import { ChevronLeft, Trash2, Plus, Shield, Search, Ban, UserCheck, Bell, Send, Eye, MousePointer2, MousePointerClick, Calendar, Edit2, Clock, CalendarDays, MessageSquare} from 'lucide-react'
 import { getStoredUser } from '@/lib/auth-utils'
 
 // 👇 1. Rename your main component to 'DashboardContent' (Internal use only)
@@ -24,6 +24,8 @@ function DashboardContent() {
   const [listingSearch, setListingSearch] = useState('')
   const [eventSearch, setEventSearch] = useState('')
   
+  const [messages, setMessages] = useState([])
+
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState(null)
 
@@ -48,6 +50,18 @@ function DashboardContent() {
   placement: 'all' // 👈 Default to 'all'
 })
 
+  const [schedules, setSchedules] = useState([])
+  const [isCreatingSchedule, setIsCreatingSchedule] = useState(false)
+  const [scheduleForm, setScheduleForm] = useState({
+    title: '', 
+    message: '', 
+    type: 'info', 
+    link: '',
+    daysOfWeek: [], // [1, 2, 3, 4, 5] for Mon-Fri
+    targetHour: '10', // 10 AM
+    endDate: ''
+  })
+
   // Switch Tab Helper (Updates URL)
   const switchTab = (tab) => {
     setActiveTab(tab)
@@ -70,19 +84,24 @@ function DashboardContent() {
       const token = localStorage.getItem('token')
       const headers = { 'Authorization': `Bearer ${token}` }
 
-      const [reqRes, commRes, userRes, listRes, adsRes,eventsRes] = await Promise.all([
+      const [reqRes, commRes, userRes, listRes, adsRes,eventsRes, scheduleRes, msgRes] = await Promise.all([
         fetch('/api/admin/community-requests', { headers }),
         fetch('/api/communities', { headers }),
         fetch('/api/admin/users', { headers }),
         fetch('/api/admin/listings', { headers }),
         fetch('/api/ads'),
-        fetch('/api/events')
+        fetch('/api/events'),
+        fetch('/api/admin/schedules', { headers }),
+        fetch('/api/admin/messages', { headers })
       ])
+
+      if (scheduleRes.ok) setSchedules((await scheduleRes.json()).schedules || []) // 👈 Set data
 
       if (reqRes.ok) setPendingRequests((await reqRes.json()).requests || [])
       if (commRes.ok) setAllCommunities((await commRes.json()).communities || [])
       if (userRes.ok) setAllUsers((await userRes.json()).users || [])
       if (listRes.ok) setAllListings((await listRes.json()).listings || [])
+      if (msgRes.ok) setMessages((await msgRes.json()).messages || [])
       if (adsRes.ok) setAllAds((await adsRes.json()).ads || [])
         if (eventsRes.ok) {
         const data = await eventsRes.json()
@@ -297,6 +316,20 @@ const handleSubmitAd = async (e) => {
     }
   }
 
+  const handleDeleteMessage = async (msgId) => {
+    if (!confirm('🗑️ Delete this message?')) return
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/admin/messages?id=${msgId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) {
+        setMessages(prev => prev.filter(m => m._id !== msgId))
+      }
+    } catch (err) { alert('Failed to delete') }
+  }
+
   // Filters
   const filteredUsers = allUsers.filter(u => 
     u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
@@ -310,6 +343,50 @@ const handleSubmitAd = async (e) => {
 
   const filteredEvents = allEvents.filter(e => e.title.toLowerCase().includes(eventSearch.toLowerCase()))
 
+    // --- SCHEDULER HANDLERS ---
+  const toggleDay = (dayIndex) => {
+    setScheduleForm(prev => {
+      const days = prev.daysOfWeek.includes(dayIndex)
+        ? prev.daysOfWeek.filter(d => d !== dayIndex) // Remove
+        : [...prev.daysOfWeek, dayIndex].sort() // Add
+      return { ...prev, daysOfWeek: days }
+    })
+  }
+
+  const handleCreateSchedule = async (e) => {
+    e.preventDefault()
+    if (scheduleForm.daysOfWeek.length === 0) return alert('Select at least one day')
+    
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/admin/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(scheduleForm)
+      })
+
+      if (res.ok) {
+        alert('Campaign Scheduled! 📅')
+        setIsCreatingSchedule(false)
+        setScheduleForm({ title: '', message: '', type: 'info', link: '', daysOfWeek: [], targetHour: '10', endDate: '' })
+        fetchData()
+      } else {
+        alert('Failed to schedule')
+      }
+    } catch (err) { console.error(err) }
+  }
+
+  const handleDeleteSchedule = async (id) => {
+    if (!confirm('Stop this campaign?')) return
+    try {
+      const token = localStorage.getItem('token')
+      await fetch(`/api/admin/schedules?id=${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      setSchedules(prev => prev.filter(s => s._id !== id))
+    } catch (err) { console.error(err) }
+  }
 
   if (loading) {
     return (
@@ -345,7 +422,7 @@ const handleSubmitAd = async (e) => {
         
         {/* Navigation Tabs */}
         <div className="flex gap-2 mb-6 bg-white p-1 rounded-lg shadow-sm border border-gray-200 overflow-x-auto scrollbar-hide">
-          {['requests', 'manage', 'users', 'listings', 'events', 'ads', 'broadcast'].map((tab) => (
+          {['requests', 'messages','manage', 'users', 'listings', 'events', 'ads', 'scheduler', 'broadcast'].map((tab) => (
             <button
               key={tab}
               onClick={() => switchTab(tab)}
@@ -401,6 +478,90 @@ const handleSubmitAd = async (e) => {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        )}
+
+        {/* TAB: MESSAGES */}
+        {activeTab === 'messages' && (
+          <div className="space-y-4">
+            {messages.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                <MessageSquare size={48} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-500">No messages yet.</p>
+              </div>
+            ) : (
+              messages.map(msg => {
+                // 🛡️ Safety Check: Ensure email exists, otherwise fallback to 'Anonymous'
+                const safeEmail = msg.userEmail || 'Anonymous';
+                const safeName = safeEmail.split('@')[0]; // Extract name safely
+
+                return (
+                  <div key={msg._id} className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-3">
+                        {/* 1. Avatar */}
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-lg">
+                          {safeEmail.charAt(0).toUpperCase()}
+                        </div>
+                        
+                        {/* 2. Main Title */}
+                        <div>
+                          <h3 className="font-bold text-gray-900 text-lg">{safeEmail}</h3>
+                          
+                          <div className="flex items-center gap-2 mt-0.5">
+                             {msg.userName && msg.userName !== 'App User' && (
+                               <span className="text-xs text-gray-500 font-medium">
+                                 {msg.userName} •
+                               </span>
+                             )}
+                             
+                             <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              msg.subject === 'Bug Report' ? 'bg-red-100 text-red-700' :
+                              msg.subject === 'Feature Request' ? 'bg-purple-100 text-purple-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {msg.subject || 'General'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => handleDeleteMessage(msg._id)}
+                        className="text-gray-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-full transition-colors"
+                        title="Delete Message"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                    
+                    {/* Message Content */}
+                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100 mt-3 mb-3 text-sm">
+                      {msg.message}
+                    </p>
+                    
+                    <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t">
+                      <span className="flex items-center gap-1">
+                        User ID: <code className="bg-gray-100 px-1 rounded">{msg.userId ? msg.userId.substring(0,8) : 'N/A'}...</code>
+                      </span>
+                      <span>{new Date(msg.createdAt).toLocaleString()}</span>
+                    </div>
+                    
+                    {/* Smart Reply Button */}
+                    <div className="mt-3 flex justify-end">
+                       <a 
+                         href={`https://mail.google.com/mail/?view=cm&fs=1&to=${safeEmail}&su=Re: ${msg.subject || 'Support'} - Unyfy Support&body=Hi there,%0A%0AWe received your message regarding "${msg.subject || 'your issue'}".%0A%0A`}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="text-white bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+                       >
+                          <Send size={14} /> Reply via Gmail
+                       </a>
+                    </div>
+                  </div>
+                )
+              })
             )}
           </div>
         )}
@@ -817,6 +978,140 @@ const handleSubmitAd = async (e) => {
                   </div>
                 ))
               }
+            </div>
+          </div>
+        )}
+
+        {/* TAB 7: SCHEDULER */}
+        {activeTab === 'scheduler' && (
+          <div>
+             <button
+              onClick={() => setIsCreatingSchedule(!isCreatingSchedule)}
+              className="w-full mb-4 py-3 bg-white border-2 border-dashed border-purple-300 text-purple-600 rounded-lg font-semibold flex items-center justify-center gap-2"
+            >
+              <Plus size={20} /> {isCreatingSchedule ? 'Cancel' : 'Create Recurring Campaign'}
+            </button>
+
+            {isCreatingSchedule && (
+              <div className="bg-purple-50 p-6 rounded-lg mb-6 border border-purple-100 shadow-sm">
+                <form onSubmit={handleCreateSchedule} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Campaign Title</label>
+                      <input 
+                        className="w-full p-2 border rounded" 
+                        value={scheduleForm.title}
+                        onChange={e => setScheduleForm({...scheduleForm, title: e.target.value})}
+                        placeholder="e.g. Monday Motivation" required 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">End Date</label>
+                      <input 
+                        type="date"
+                        className="w-full p-2 border rounded" 
+                        value={scheduleForm.endDate}
+                        onChange={e => setScheduleForm({...scheduleForm, endDate: e.target.value})}
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Message</label>
+                    <textarea 
+                      className="w-full p-2 border rounded resize-none h-20" 
+                      value={scheduleForm.message}
+                      onChange={e => setScheduleForm({...scheduleForm, message: e.target.value})}
+                      placeholder="The notification body text..." required 
+                    />
+                  </div>
+
+                  {/* Days of Week Selector */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Repeat On</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => toggleDay(index)}
+                          className={`w-10 h-10 rounded-full text-xs font-bold transition-all ${
+                            scheduleForm.daysOfWeek.includes(index)
+                              ? 'bg-purple-600 text-white shadow-md scale-105'
+                              : 'bg-white border text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Time of Day (IST)</label>
+                    <select 
+                      className="w-full p-2 border rounded bg-white"
+                      value={scheduleForm.targetHour}
+                      onChange={e => setScheduleForm({...scheduleForm, targetHour: e.target.value})}
+                    >
+                      {Array.from({ length: 24 }).map((_, i) => (
+                        <option key={i} value={i}>
+                          {i === 0 ? '12 AM (Midnight)' : i === 12 ? '12 PM (Noon)' : i > 12 ? `${i-12} PM` : `${i} AM`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button className="w-full bg-purple-600 text-white font-bold py-3 rounded hover:bg-purple-700 transition-colors">
+                    Schedule Campaign
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Active Schedules List */}
+            <div className="space-y-4">
+              {schedules.length === 0 && !isCreatingSchedule && (
+                <p className="text-center text-gray-500 py-8">No active campaigns.</p>
+              )}
+              
+              {schedules.map(job => (
+                <div key={job._id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-gray-900">{job.title}</h3>
+                      <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase font-bold">Active</span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{job.message}</p>
+                    
+                    <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <Clock size={14} />
+                        {job.targetHour > 12 ? `${job.targetHour - 12} PM` : `${job.targetHour} AM`}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <CalendarDays size={14} />
+                        Ends: {new Date(job.endDate).toLocaleDateString()}
+                      </div>
+                      <div className="flex gap-1">
+                        {job.daysOfWeek.sort().map(d => (
+                          <span key={d} className="bg-gray-100 px-1.5 rounded text-gray-600 font-medium">
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => handleDeleteSchedule(job._id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors self-end md:self-auto"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}

@@ -2,7 +2,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Calendar, Plus, X, TrendingUp } from 'lucide-react'
-import Link from 'next/link'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 export default function AttendancePage() {
@@ -337,6 +336,7 @@ const fetchStats = async () => {
                       </select>
                     </div>
 
+                    {/* ✅ Description Box is now visible for ALL absent reasons (including 'none') */}
                     {attendance.status === 'absent' && (
                         <>
                             <div>
@@ -351,10 +351,10 @@ const fetchStats = async () => {
                                 <option value="none">None</option>
                                 <option value="placement">Placement</option>
                                 <option value="medical">Medical</option>
+                                <option value="sports">Sports</option>
                             </select>
                             </div>
                             
-                            {attendance.reason && attendance.reason !== 'none' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Description (Optional)
@@ -370,7 +370,6 @@ const fetchStats = async () => {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm"
                                 />
                             </div>
-                            )}
                         </>
                         )}
                   </div>
@@ -453,7 +452,6 @@ const fetchStats = async () => {
       </div>
 
       {/* Add Subject Modal */}
-      {/* Add Subject Modal */}
 {showAddSubject && (
   <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div className="bg-white w-full sm:max-w-md sm:rounded-lg flex flex-col relative">
@@ -510,9 +508,6 @@ const fetchStats = async () => {
     </div>
   </div>
 )}
-
-
-
       </main>
     </div>
   )

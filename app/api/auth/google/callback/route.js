@@ -1,3 +1,4 @@
+// app/api/auth/google/callback/route.js
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { generateToken } from '@/lib/auth'
@@ -11,6 +12,9 @@ export async function GET(request) {
       return NextResponse.redirect(new URL('/login?error=no_code', request.url))
     }
 
+    // 1. Safe Redirect URI (From Snippet 1)
+    const redirectUri = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/google/callback`;
+
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -18,7 +22,7 @@ export async function GET(request) {
         code,
         client_id: process.env.GOOGLE_CLIENT_ID,
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/google/callback`,
+        redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       }),
     })
@@ -36,6 +40,7 @@ export async function GET(request) {
 
     const googleUser = await userInfoResponse.json()
 
+    // Enforce NITC domain
     if (!googleUser.email.endsWith('@nitc.ac.in')) {
       return NextResponse.redirect(new URL('/login?error=invalid_domain', request.url))
     }
@@ -46,19 +51,20 @@ export async function GET(request) {
     let user = await db.collection('users').findOne({ email: googleUser.email })
 
     if (!user) {
+      // Create new user
       const result = await db.collection('users').insertOne({
         email: googleUser.email,
         name: googleUser.name,
-        phone: '',
+        phone: '', 
         isVerified: true,
         googleId: googleUser.id,
         picture: googleUser.picture,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
-      
       user = await db.collection('users').findOne({ _id: result.insertedId })
     } else {
+      // Update existing user
       await db.collection('users').updateOne(
         { _id: user._id },
         { 
@@ -74,26 +80,31 @@ export async function GET(request) {
 
     const token = generateToken(user._id.toString())
     
-    // ✅ FIXED: Use encodeURIComponent to safely encode JSON
+    // 2. Richer User Data (From Snippet 2)
     const userObj = {
       id: user._id.toString(),
       name: user.name,
       email: user.email,
       phone: user.phone || '',
       isVerified: user.isVerified,
+      picture: user.picture || '',
     }
 
-    const response = NextResponse.redirect(new URL('/auth/complete', request.url))
+    // 3. Smart Redirect Logic (From Snippet 2)
+    // If no phone number, force them to complete profile
+    const redirectUrl = !user.phone 
+      ? new URL('/complete-profile', request.url)
+      : new URL('/', request.url)
     
-    // Store in cookies
+    const response = NextResponse.redirect(redirectUrl)
+    
     response.cookies.set('auth_token', token, {
-      httpOnly: false,
+      httpOnly: false, 
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7,
     })
     
-    // ✅ FIXED: Properly encode user data
     response.cookies.set('user_data', JSON.stringify(userObj), {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',

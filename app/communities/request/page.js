@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Users } from 'lucide-react'
+import { ChevronLeft, Info, Mail } from 'lucide-react'
 
 export default function RequestCommunityPage() {
   const router = useRouter()
@@ -9,7 +9,7 @@ export default function RequestCommunityPage() {
     name: '',
     description: '',
     icon: '🎯',
-    color: '#2563eb' // Default Blue (No selection needed)
+    color: '#2563eb' // Default Blue
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -155,6 +155,29 @@ export default function RequestCommunityPage() {
                 {loading ? 'Submitting...' : 'Submit Request'}
               </button>
             </form>
+
+            {/* 👇 Updated Contact Info Block */}
+            <div className="mt-6 bg-blue-50 border border-blue-100 rounded-lg p-4 flex gap-3 items-start">
+              <Info className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
+              <div className="text-sm text-gray-700">
+                <p className="font-semibold text-gray-900 mb-1">Approval Process</p>
+                <p className="mb-2 leading-relaxed">
+                  Community requests are reviewed by an admin within <span className="font-semibold text-blue-700">24 hours</span>.
+                </p>
+                <p className="leading-relaxed">
+                  For urgent approval or specific details, please email us at{' '}
+                  <a 
+                    href="https://mail.google.com/mail/?view=cm&fs=1&to=support@unyfy.in" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 font-bold hover:underline inline-flex items-center gap-1"
+                  >
+                    support@unyfy.in <Mail size={12} />
+                  </a>
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

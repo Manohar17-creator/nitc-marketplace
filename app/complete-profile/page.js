@@ -1,36 +1,64 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Phone, CheckCircle } from 'lucide-react'
+import { User, Phone, CheckCircle, Sparkles } from 'lucide-react'
 
 export default function CompleteProfile() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [userData, setUserData] = useState(null)
   
   const [formData, setFormData] = useState({
     name: '',
     phone: ''
   })
 
-  // 1. Load existing data (Pre-fill Name if available)
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const userStr = localStorage.getItem('user')
+    const getCookie = (name) => {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) return parts.pop().split(';').shift()
+      return null
+    }
 
-    if (!token || !userStr) {
+    const token = getCookie('auth_token') || localStorage.getItem('token')
+    const userDataCookie = getCookie('user_data')
+    
+    if (!token) {
       router.push('/login')
       return
     }
 
+    if (!localStorage.getItem('token')) {
+      localStorage.setItem('token', token)
+    }
+
     try {
-      const user = JSON.parse(userStr)
-      setFormData(prev => ({
-        ...prev,
-        name: user.name || '',  // Pre-fill name from Google
-        phone: user.phone || '' 
-      }))
+      let user
+      if (userDataCookie) {
+        user = JSON.parse(decodeURIComponent(userDataCookie))
+      } else {
+        const userStr = localStorage.getItem('user')
+        user = userStr ? JSON.parse(userStr) : null
+      }
+
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      setUserData(user)
+      setFormData({
+        name: user.name || '',
+        phone: user.phone || ''
+      })
+
+      if (user.phone) {
+        router.push('/')
+      }
     } catch (e) {
+      console.error('Error parsing user data:', e)
       router.push('/login')
     }
   }, [router])
@@ -44,10 +72,18 @@ export default function CompleteProfile() {
     setLoading(true)
     setError('')
 
-    const token = localStorage.getItem('token')
+    if (formData.phone.length < 10) {
+      setError('Please enter a valid phone number')
+      setLoading(false)
+      return
+    }
+
+    const token = localStorage.getItem('token') || 
+                  document.cookie.split('; ')
+                    .find(row => row.startsWith('auth_token='))
+                    ?.split('=')[1]
 
     try {
-      // Sends data to your backend to update the user
       const res = await fetch('/api/user/update-profile', {
         method: 'PUT',
         headers: {
@@ -60,93 +96,134 @@ export default function CompleteProfile() {
       const data = await res.json()
 
       if (res.ok) {
-        // Update local storage with the new full profile
         localStorage.setItem('user', JSON.stringify(data.user))
-        
-        // Success! Go to Home Page
+        document.cookie = `user_data=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${60 * 60 * 24 * 7}`
         router.push('/')
       } else {
         setError(data.error || 'Failed to update profile')
       }
     } catch (err) {
-      setError('Something went wrong')
+      console.error('Profile update error:', err)
+      setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
+  if (!userData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 border border-gray-100">
         
-        {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="text-blue-600" size={32} />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">One Last Step!</h1>
-          <p className="text-gray-500 mt-2 text-sm">
-            Confirm your details so people can contact you.
+          {userData.picture ? (
+            <img 
+              src={userData.picture} 
+              alt="Profile" 
+              className="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-blue-100 shadow-lg"
+            />
+          ) : (
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Sparkles className="text-white" size={40} />
+            </div>
+          )}
+          
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Almost There!</h1>
+          <p className="text-gray-500 text-sm">
+            Complete your profile to start using Unyfy
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm border border-red-100">
-            {error}
+          <div className="mb-6 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100">
+            ⚠️ {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-6">
           
-          {/* 1. Name Input */}
           <div>
-            <label className="block text-gray-700 text-xs font-bold mb-1.5 uppercase tracking-wide">
+            <label className="block text-gray-700 text-xs font-bold mb-2 uppercase tracking-wide">
               Display Name
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 transition-all"
-                placeholder="Your Name"
+                minLength={2}
+                className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 transition-all outline-none text-base"
+                placeholder="Your display name"
               />
             </div>
+            <p className="text-xs text-gray-400 mt-1.5 ml-1">
+              This is how others will see you on Unyfy
+            </p>
           </div>
 
-          {/* 2. Phone Input */}
           <div>
-            <label className="block text-gray-700 text-xs font-bold mb-1.5 uppercase tracking-wide">
+            <label className="block text-gray-700 text-xs font-bold mb-2 uppercase tracking-wide">
               Phone Number
             </label>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="tel"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
                 required
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 transition-all"
-                placeholder="+91 98765 43210"
+                pattern="[0-9]{10,12}"
+                className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 transition-all outline-none text-base"
+                placeholder="9876543210"
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1 ml-1">
-              Used for buyers/sellers to call or WhatsApp you.
+            <p className="text-xs text-gray-400 mt-1.5 ml-1">
+              For buyers/sellers to contact you (WhatsApp/Call)
+            </p>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+            <p className="text-xs text-gray-500 mb-1">Your NITC Email</p>
+            <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+              {userData.email}
+              <CheckCircle size={16} className="text-green-500" />
             </p>
           </div>
 
           <button
-            type="submit"
+            onClick={handleSubmit}
             disabled={loading}
-            className="w-full mt-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3.5 rounded-lg font-bold hover:shadow-lg hover:scale-[1.01] transition-all disabled:opacity-50 disabled:scale-100"
+            className="w-full mt-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold text-base hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed"
           >
-            {loading ? 'Saving...' : 'Get Started 🚀'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                Saving...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                Complete Setup <Sparkles size={20} />
+              </span>
+            )}
           </button>
-        </form>
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-400">
+            🔒 Your contact info is only visible to verified NITC members
+          </p>
+        </div>
       </div>
     </div>
   )

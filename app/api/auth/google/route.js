@@ -8,6 +8,7 @@ export async function GET(request) {
     return NextResponse.redirect(new URL('/login?error=google_auth_failed', request.url))
   }
 
+
   // Build Google OAuth URL
   const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
   googleAuthUrl.searchParams.set('client_id', process.env.GOOGLE_CLIENT_ID)

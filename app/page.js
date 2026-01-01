@@ -5,7 +5,7 @@ import Link from 'next/link'
 import ListingCard from '@/components/ListingCard'
 import NotificationBell from '@/components/NotificationBell'
 import AdCard from '@/components/AdCard'
-import AdSenseBanner from '@/components/AdSenseBanner'
+// Removed AdSenseBanner import since we aren't using it anymore
 import { getMessaging, getToken } from 'firebase/messaging'
 import { app } from '@/lib/firebase'
 
@@ -34,49 +34,36 @@ export default function HomePage() {
     { id: 'misc', name: 'Miscellaneous', icon: Tag, color: 'bg-gray-500' },
   ]
 
-  // 🆕 1. Listen for the 'beforeinstallprompt' event
+  // 1. Listen for the 'beforeinstallprompt' event
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault()
-      // Stash the event so it can be triggered later.
       setDeferredPrompt(e)
-      // Show our UI
       setIsInstallVisible(true)
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     }
   }, [])
 
-  
-
-  // 🆕 2. Handle Install Click
+  // 2. Handle Install Click
   const handleInstallClick = async () => {
     if (!deferredPrompt) return
-
-    // Show the install prompt
     deferredPrompt.prompt()
-
-    // Wait for the user to respond to the prompt
     const { outcome } = await deferredPrompt.userChoice
-    
-    // We've used the prompt, and can't use it again, discard it
     setDeferredPrompt(null)
     setIsInstallVisible(false)
   }
 
-  // Smart caching with localStorage
+  // Smart caching
   const CACHE_DURATION = 2 * 60 * 1000 
   
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery)
     }, 300) 
-    
     return () => clearTimeout(timer)
   }, [searchQuery])
 
@@ -202,26 +189,7 @@ export default function HomePage() {
     }
   }
 
-  const mixedContent = useMemo(() => {
-    if (listings.length === 0) return []
-    const content = []
-    const localAds = ads.filter(ad => ad.type === 'local')
-    let localAdIndex = 0
-
-    listings.forEach((listing, index) => {
-      content.push({ type: 'listing', data: listing, key: listing._id })
-      if ((index + 1) % 3 === 0) {
-        if (localAdIndex < localAds.length) {
-          content.push({ type: 'local_ad', data: localAds[localAdIndex], key: `local-ad-${localAdIndex}` })
-          localAdIndex++
-        } else {
-          content.push({ type: 'google_ad', data: null, key: `google-ad-${index}` })
-        }
-      }
-    })
-    return content
-  }, [listings, ads])
-
+  // 🧹 SIMPLIFIED: Just return listings (removed ad mixing logic)
   const renderContent = () => {
     if (loading && listings.length === 0) {
       return (
@@ -256,14 +224,19 @@ export default function HomePage() {
 
     return (
       <div className="grid gap-4 pb-8 transition-all duration-300">
-        {mixedContent.map((item) => {
-          if (item.type === 'listing') return <ListingCard key={item.key} listing={item.data} />
-          if (item.type === 'local_ad') return <AdCard key={item.key} ad={item.data} />
-          if (item.type === 'google_ad') return <AdSenseBanner key={item.key} dataAdSlot="YOUR_REAL_SLOT_ID" />
-        })}
+        {listings.map((listing) => (
+          <ListingCard key={listing._id} listing={listing} />
+        ))}
       </div>
     )
   }
+
+  // 🆕 Helper to find a random/first valid ad
+  const topAd = useMemo(() => {
+    if (ads.length === 0) return null
+    // You can just pick the first one, or filter for a specific "placement" type if you have that logic
+    return ads[0] 
+  }, [ads])
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -312,8 +285,7 @@ export default function HomePage() {
       <main className="pt-[72px] pb-24 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4">
           
-          {/* 🆕 ANDROID INSTALL BANNER */}
-          {/* This only shows if the browser fires the event (mostly Android) */}
+          {/* ANDROID INSTALL BANNER */}
           {isInstallVisible && (
             <div className="mt-4 mb-2 bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl p-4 text-white shadow-lg flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -340,6 +312,13 @@ export default function HomePage() {
                 </button>
               </div>
             </div>
+          )}
+
+          {/* 📢 ONE SINGLE AD (Only if exists) */}
+          {topAd && (
+             <div className="mt-4 mb-4">
+               <AdCard ad={topAd} />
+             </div>
           )}
 
           {/* Post Lost/Found Button */}

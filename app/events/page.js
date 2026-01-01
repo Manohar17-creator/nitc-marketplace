@@ -27,8 +27,10 @@ export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const router = useRouter()
 
+  const CACHE_KEY = 'events_feed_cache'
+
   useEffect(() => {
-    // Get current user immediately (synchronous)
+    // 1. User Setup
     const token = localStorage.getItem('token')
     if (token) {
       try {
@@ -37,33 +39,53 @@ export default function EventsPage() {
       } catch (e) {}
     }
 
-    // Fetch events
-    fetchEvents()
+    // 2. Load from Cache IMMEDIATELY (Instant Navigation)
+    const cachedData = localStorage.getItem(CACHE_KEY)
+    if (cachedData) {
+      try {
+        const parsed = JSON.parse(cachedData)
+        setFeed(parsed)
+        setLoading(false) // Show cached content instantly
+      } catch (e) {
+        console.error('Cache parse error', e)
+      }
+    }
 
-    // Set up polling for real-time updates every 30 seconds
+    // 3. Fetch Fresh Data (Background Update)
+    // We pass 'true' if we found cache, so we don't show a spinner on top of content
+    const hasCache = !!cachedData
+    fetchEvents(!hasCache) 
+
+    // 4. Polling (Keep existing logic)
     const interval = setInterval(() => {
-      fetchEvents(true) // silent refresh
+      fetchEvents(true) // Silent refresh
     }, 30000)
 
     return () => clearInterval(interval)
   }, [])
 
-  const fetchEvents = async (silent = false) => {
-    if (!silent) setLoading(true)
+  const fetchEvents = async (showSpinner = false) => {
+    if (showSpinner) setLoading(true)
     
     try {
-      const res = await fetch('/api/events', { 
-        cache: 'no-store', // Disable Next.js caching for fresh data
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
+      // Add timestamp to prevent browser caching of the API call itself
+      const res = await fetch(`/api/events?t=${Date.now()}`, { 
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
       })
-      const data = await res.json()
-      if (data.feed) setFeed(data.feed)
+      
+      if (res.ok) {
+        const data = await res.json()
+        if (data.feed) {
+          setFeed(data.feed)
+          // ✅ UPDATE CACHE
+          localStorage.setItem(CACHE_KEY, JSON.stringify(data.feed))
+        }
+      }
     } catch (error) { 
       console.error(error) 
     } finally { 
-      if (!silent) setLoading(false) 
+      if (showSpinner) setLoading(false) 
     }
   }
 
@@ -71,7 +93,7 @@ export default function EventsPage() {
     const token = localStorage.getItem('token')
     if (!token) return router.push('/auth/login')
 
-    // Optimistic Update - Instant UI feedback
+    // Optimistic Update
     const newFeed = [...feed]
     const item = newFeed[index]
     if (item.type !== 'event') return
@@ -84,9 +106,11 @@ export default function EventsPage() {
     } else {
       event.interested.push(currentUser.userId)
     }
+    
     setFeed(newFeed)
+    // Update cache optimistically too so it persists if they navigate away
+    localStorage.setItem(CACHE_KEY, JSON.stringify(newFeed))
 
-    // Background API call
     try {
       await fetch('/api/events/interested', {
         method: 'POST',
@@ -94,8 +118,7 @@ export default function EventsPage() {
         body: JSON.stringify({ eventId })
       })
     } catch (error) {
-      // Revert on error
-      fetchEvents(true)
+      fetchEvents(true) // Revert on error
     }
   }
 
@@ -103,9 +126,12 @@ export default function EventsPage() {
     if (!confirm('Are you sure you want to delete this event?')) return
     const token = localStorage.getItem('token')
     
-    // Optimistic delete - Remove immediately from UI
+    // Optimistic delete
     const originalFeed = [...feed]
-    setFeed(feed.filter(item => item.data._id !== eventId))
+    const updatedFeed = feed.filter(item => item.data._id !== eventId)
+    
+    setFeed(updatedFeed)
+    localStorage.setItem(CACHE_KEY, JSON.stringify(updatedFeed))
 
     try {
       const res = await fetch(`/api/events/${eventId}`, {
@@ -114,13 +140,13 @@ export default function EventsPage() {
       })
 
       if (!res.ok) {
-        // Revert if failed
         setFeed(originalFeed)
+        localStorage.setItem(CACHE_KEY, JSON.stringify(originalFeed))
         alert('You cannot delete this event.')
       }
     } catch (error) {
-      // Revert on error
       setFeed(originalFeed)
+      localStorage.setItem(CACHE_KEY, JSON.stringify(originalFeed))
       alert('Failed to delete event.')
     }
   }
@@ -158,7 +184,6 @@ export default function EventsPage() {
            event.venue.toLowerCase().includes(query)
   })
 
-  // Format Date Helper
   const formatDate = (dateString) => {
     const date = new Date(dateString)
     return {
@@ -200,7 +225,6 @@ export default function EventsPage() {
         <div className="max-w-2xl mx-auto px-4 mt-4 grid gap-4">
           
           {loading && feed.length === 0 ? (
-             // Skeleton loader for better UX
              <div className="space-y-4">
                {[1, 2, 3].map(i => (
                  <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
@@ -213,7 +237,6 @@ export default function EventsPage() {
              </div>
           ) : (
             filteredFeed.map((item, index) => {
-              
               if (item.type === 'ad') {
                  return <AdCard key={`ad-${index}`} ad={item.data} />
               }

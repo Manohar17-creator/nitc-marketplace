@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, Calendar, X, Filter } from 'lucide-react'
+import { ArrowLeft, Calendar } from 'lucide-react'
 import AttendanceFilters from '../AttendanceFilters'
 
 export default function SubjectAttendancePage() {
@@ -77,11 +77,13 @@ export default function SubjectAttendancePage() {
     return { present, absent, total: present + absent }
   }, [attendance])
 
+  // 🆕 ADDED SPORTS TO COUNTS
   const reasonCounts = useMemo(() => {
     const absentRecords = attendance.filter(r => r.status === 'absent')
     return {
       placement: absentRecords.filter(r => r.reason === 'placement').length,
       medical: absentRecords.filter(r => r.reason === 'medical').length,
+      sports: absentRecords.filter(r => r.reason === 'sports').length, // ✅ Added
       none: absentRecords.filter(r => !r.reason || r.reason === 'none').length
     }
   }, [attendance])
@@ -103,48 +105,42 @@ export default function SubjectAttendancePage() {
   }
 
   return (
-  <div className="min-h-screen bg-gray-50 pb-nav-safe">
+    <div className="min-h-screen bg-gray-50 pb-nav-safe">
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
-  <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
-    <div className="flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
-      {/* Left: Back + Subject Name */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => router.push('/attendance')}
-          className="flex items-center gap-1 hover:opacity-80 active:scale-95 transition"
-        >
-          <ArrowLeft size={22} />
-        </button>
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/attendance')}
+              className="flex items-center gap-1 hover:opacity-80 active:scale-95 transition"
+            >
+              <ArrowLeft size={22} />
+            </button>
 
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold">{subject.name}</h1>
-          <p className="text-blue-100 text-xs sm:text-sm">
-            {detailStats.present}P / {detailStats.absent}A • Total: {detailStats.total}
-          </p>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold truncate max-w-[200px]">{subject.name}</h1>
+              <p className="text-blue-100 text-xs sm:text-sm">
+                {detailStats.present}P / {detailStats.absent}A • Total: {detailStats.total}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Optional future actions (e.g., edit) could go here */}
-    </div>
-  </div>
-</div>
+      <AttendanceFilters
+        filterStatus={filterStatus}
+        setFilterStatus={setFilterStatus}
+        filterReason={filterReason}
+        setFilterReason={setFilterReason}
+        reasonCounts={reasonCounts}
+        stats={{
+          all: attendance.length,
+          present: detailStats.present,
+          absent: detailStats.absent,
+        }}
+      />
 
-<AttendanceFilters
-  filterStatus={filterStatus}
-  setFilterStatus={setFilterStatus}
-  filterReason={filterReason}
-  setFilterReason={setFilterReason}
-  reasonCounts={reasonCounts}
-  stats={{
-    all: attendance.length,
-    present: detailStats.present,
-    absent: detailStats.absent,
-  }}
-/>
-
-
-<div className="pt-[180px] sm:pt-[200px]"></div>
+      <div className="pt-[180px] sm:pt-[200px]"></div>
 
       {/* Attendance Records */}
       <div className="max-w-4xl mx-auto p-4 flex-1 w-full pb-20">
@@ -173,32 +169,38 @@ export default function SubjectAttendancePage() {
                       })}
                     </div>
                     {record.status === 'present' ? (
-                    <div className="text-green-600 text-sm font-medium mt-1">
-                      ✓ Present
-                    </div>
-                  ) : record.status === 'absent' ? (
-                    <div className="mt-1">
-                      <div className="text-red-600 text-sm font-medium flex items-center gap-2">
-                        ✗ Absent
-                        {record.reason && record.reason !== 'none' && (
-                          <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
-                            {record.reason === 'placement' ? '💼 Placement' : '🏥 Medical'}
-                          </span>
+                      <div className="text-green-600 text-sm font-medium mt-1">
+                        ✓ Present
+                      </div>
+                    ) : record.status === 'absent' ? (
+                      <div className="mt-1">
+                        <div className="text-red-600 text-sm font-medium flex items-center gap-2">
+                          ✗ Absent
+                          {/* 🆕 UPDATED BADGE LOGIC FOR SPORTS */}
+                          {record.reason && record.reason !== 'none' && (
+                            <span className={`px-2 py-0.5 text-xs rounded-full flex items-center gap-1 ${
+                              record.reason === 'placement' ? 'bg-orange-100 text-orange-700' :
+                              record.reason === 'medical' ? 'bg-red-100 text-red-700' :
+                              record.reason === 'sports' ? 'bg-blue-100 text-blue-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {record.reason === 'placement' && '💼 Placement'}
+                              {record.reason === 'medical' && '🏥 Medical'}
+                              {record.reason === 'sports' && '🏆 Sports'} {/* ✅ Added */}
+                            </span>
+                          )}
+                        </div>
+                        {record.description && (
+                          <p className="text-gray-600 text-xs mt-1 italic">
+                            {record.description}
+                          </p>
                         )}
                       </div>
-                      {record.description && (
-                        <p className="text-gray-600 text-xs mt-1 italic">
-                           {record.description}
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-gray-500 text-sm mt-1">No Class</div>
-                  )}
-
+                    ) : (
+                      <div className="text-gray-500 text-sm mt-1">No Class</div>
+                    )}
                   </div>
-                  
-                  
+
                   <div className={`text-3xl ${record.status === 'present' ? 'text-green-500' : 'text-red-500'}`}>
                     {record.status === 'present' ? '✓' : '✗'}
                   </div>
