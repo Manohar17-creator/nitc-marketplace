@@ -5,6 +5,7 @@ import IOSInstallPrompt from '@/components/IOSInstallPrompt'
 import ForegroundToast from '@/components/ForegroundToast'
 import GoogleAdSense from '@/components/GoogleAdSense'
 import ServiceWorkerUpdater from '@/components/ServiceWorkerUpdater'
+import NotificationManager from '@/components/NotificationManager'
 
 export const metadata = {
   title: 'Unyfy',
@@ -43,6 +44,7 @@ export default function RootLayout({ children }) {
         <GoogleAdSense pId="ca-pub-2297395818809684" />
         <IOSInstallPrompt />
         <ForegroundToast />
+        <NotificationManager />
         
         <main className="flex-1 overflow-y-auto pb-nav-safe">
           {children}

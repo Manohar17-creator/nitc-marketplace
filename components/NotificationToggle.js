@@ -28,7 +28,7 @@ export default function NotificationToggle() {
         return
       }
 
-      const token = await requestNotificationPermission(user.id)
+      const token = await requestNotificationPermission(user._id)
       
       if (token) {
         setEnabled(true)
