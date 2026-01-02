@@ -20,11 +20,15 @@ export async function GET(request) {
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
+    // Optimized GET query
     const subjects = await db
       .collection('subjects')
-      .find({ userId: new ObjectId(decoded.userId) })
+      .find(
+        { userId: new ObjectId(decoded.userId) },
+        { projection: { name: 1, createdAt: 1 } } // ✅ Only fetch necessary fields
+      )
       .sort({ createdAt: -1 })
-      .toArray()
+      .toArray();
 
     return NextResponse.json({ subjects })
 

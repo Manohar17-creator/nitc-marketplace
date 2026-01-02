@@ -1,7 +1,7 @@
 'use client'
 import { useEffect } from 'react'
-import { requestNotificationPermission } from '@/lib/firebase'
-import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
+import { requestNotificationPermission, refreshNotificationToken } from '@/lib/firebase' // ✅ Added refreshNotificationToken
+import { getUserData } from '@/lib/auth-client'
 
 export default function NotificationManager() {
   useEffect(() => {
@@ -10,7 +10,16 @@ export default function NotificationManager() {
         const user = getUserData()
         if (!user) return // Not logged in
 
-        // Check if already set up
+        // ✅ NEW: SILENT REFRESH
+        // This ensures the backend always has the latest token without bothering the user.
+        if (Notification.permission === 'granted') {
+          console.log('🔄 Refreshing notification subscription...')
+          await refreshNotificationToken(user._id || user.id) // Support both _id and id formats
+        }
+
+        // --- Existing Setup Logic ---
+        
+        // Check if already set up in this browser session
         const hasToken = localStorage.getItem('fcm_token_set')
         if (hasToken) {
           console.log('✅ Notifications already configured')
@@ -20,7 +29,7 @@ export default function NotificationManager() {
         // Only auto-request if permission is already granted
         if (Notification.permission === 'granted') {
           console.log('🔔 Auto-setting up notifications (permission already granted)')
-          const token = await requestNotificationPermission(user._id)
+          const token = await requestNotificationPermission(user._id || user.id)
           
           if (token) {
             localStorage.setItem('fcm_token_set', 'true')
@@ -36,7 +45,8 @@ export default function NotificationManager() {
     }
 
     // Delay setup to avoid blocking page load
-    setTimeout(setupNotifications, 2000)
+    const timer = setTimeout(setupNotifications, 2000)
+    return () => clearTimeout(timer) // Cleanup timer on unmount
   }, [])
 
   return null // This component doesn't render anything
