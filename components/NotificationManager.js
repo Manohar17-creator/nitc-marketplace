@@ -1,13 +1,13 @@
 'use client'
 import { useEffect } from 'react'
 import { requestNotificationPermission } from '@/lib/firebase'
-import { getStoredUser } from '@/lib/auth-utils'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function NotificationManager() {
   useEffect(() => {
     const setupNotifications = async () => {
       try {
-        const user = getStoredUser()
+        const user = getUserData()
         if (!user) return // Not logged in
 
         // Check if already set up

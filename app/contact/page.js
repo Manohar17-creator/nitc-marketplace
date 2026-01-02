@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Send, MessageSquare, AlertCircle } from 'lucide-react'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function ContactPage() {
   const router = useRouter()
@@ -13,7 +14,7 @@ export default function ContactPage() {
     setLoading(true)
     
     try {
-      const token = localStorage.getItem('token') // Optional: if you want to know WHO sent it
+      const token = getAuthToken() // Optional: if you want to know WHO sent it
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bell, Calendar, MessageCircle, Radio, Info } from 'lucide-react' // 👈 Import more icons
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function NotificationBell() {
   const router = useRouter()
@@ -11,7 +12,7 @@ export default function NotificationBell() {
   const dropdownRef = useRef(null)
 
   const fetchNotifications = async () => {
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     if (!token) return
 
     try {
@@ -48,7 +49,7 @@ export default function NotificationBell() {
       setNotifications(prev => prev.map(n => n._id === notif._id ? { ...n, read: true } : n))
       setUnreadCount(prev => Math.max(0, prev - 1))
       
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`/api/notifications/${notif._id}/read`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }

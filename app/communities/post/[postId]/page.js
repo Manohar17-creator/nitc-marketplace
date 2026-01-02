@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getStoredUser } from '@/lib/auth-utils'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 import { MessageSquare, ChevronLeft, Trash2, Send } from 'lucide-react'
 
 export default function PostDetailPage({ params }) {
@@ -25,7 +25,7 @@ export default function PostDetailPage({ params }) {
     fetchData()
 
     if (typeof window !== 'undefined') {
-      const user = getStoredUser()
+      const user = getUserData()
       if (user) setCurrentUserId(user.id)
     }
   }, [params])
@@ -56,11 +56,10 @@ export default function PostDetailPage({ params }) {
     e.preventDefault()
     if (!newComment.trim()) return
 
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      return
-    }
+    if (!isAuthenticated()) {
+    router.push('/login')
+    return
+  }
 
     setSubmitting(true)
     try {
@@ -86,7 +85,7 @@ export default function PostDetailPage({ params }) {
     if (!confirm('Delete this comment?')) return
 
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const response = await fetch(`/api/communities/comments/${commentId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

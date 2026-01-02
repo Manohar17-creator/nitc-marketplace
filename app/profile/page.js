@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { User, Mail, Phone, MapPin, Edit, Trash2, Plus, LogOut, Package, MessageSquare, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
-import { getStoredUser } from '@/lib/auth-utils'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 import NotificationSettingsButton from '@/components/NotificationSettingsButton'
 
 export default function ProfilePage() {
@@ -21,13 +21,13 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       if (!token) {
         router.push('/login')
         return
       }
 
-      const userData = getStoredUser()
+      const userData = getUserData()
       setUser(userData)
       setEditData({
         name: userData.name || '',
@@ -49,8 +49,8 @@ export default function ProfilePage() {
 
   const loadMyListings = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const user = getStoredUser()
+      const token = getAuthToken()
+      const user = getUserData()
 
       if (!token || !user.email) {
         setLoading(false)
@@ -88,7 +88,7 @@ export default function ProfilePage() {
     if (!confirm(confirmMessage)) return
 
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
 
       const response = await fetch(`/api/listings/${listingId}`, {
         method: 'PUT',
@@ -148,7 +148,7 @@ export default function ProfilePage() {
     }
 
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
 
       const response = await fetch(`/api/listings/${listingId}`, {
         method: 'DELETE',
@@ -243,7 +243,7 @@ export default function ProfilePage() {
     if (!confirm(confirmMessage)) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = getAuthToken();
       const newStatus = isLostFound
         ? (listing.type === 'lost' ? 'found' : 'claimed')
         : 'sold';

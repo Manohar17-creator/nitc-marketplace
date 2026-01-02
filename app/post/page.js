@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Upload, X, ArrowLeft, Loader } from 'lucide-react'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function PostListing() {
   const router = useRouter()
@@ -20,7 +21,7 @@ export default function PostListing() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       if (!token) {
         router.push('/login')
       }
@@ -146,7 +147,7 @@ const removeImage = (index) => {
     }
 
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       if (!token) {
         router.push('/login')
         return

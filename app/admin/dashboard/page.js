@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from 'react' // 👈 Import Suspense
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Trash2, Plus, Shield, Search, Ban, UserCheck, Bell, Send, Eye, MousePointer2, MousePointerClick, Calendar, Edit2, Clock, CalendarDays, MessageSquare} from 'lucide-react'
-import { getStoredUser } from '@/lib/auth-utils'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 // 👇 1. Rename your main component to 'DashboardContent' (Internal use only)
 function DashboardContent() {
@@ -69,7 +69,7 @@ function DashboardContent() {
   }
 
   useEffect(() => {
-    const user = getStoredUser()
+    const user = getUserData()
     if (user?.email !== 'kandula_b220941ec@nitc.ac.in') {
       alert('Access denied - Admin only')
       router.push('/')
@@ -81,7 +81,7 @@ function DashboardContent() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const headers = { 'Authorization': `Bearer ${token}` }
 
       const [reqRes, commRes, userRes, listRes, adsRes,eventsRes, scheduleRes, msgRes] = await Promise.all([
@@ -125,7 +125,7 @@ function DashboardContent() {
     if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this request?`)) return
     setProcessingId(requestId)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`/api/admin/community-requests/${requestId}/${action}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -140,7 +140,7 @@ function DashboardContent() {
     if (!confirm('⚠️ Delete this community? This cannot be undone.')) return
     setProcessingId(commId)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`/api/communities/${commId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -155,7 +155,7 @@ function DashboardContent() {
     e.preventDefault()
     if (!newComm.name) return
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch('/api/communities', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -174,7 +174,7 @@ function DashboardContent() {
     if (!confirm(`${action === 'ban' ? 'Ban' : 'Unban'} this user?`)) return
     setProcessingId(userId)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`/api/admin/users/${userId}/${action}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -192,7 +192,7 @@ function DashboardContent() {
     if (!confirm('🗑️ Delete this listing permanently?')) return
     setProcessingId(listingId)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`/api/admin/listings?id=${listingId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -211,7 +211,7 @@ function DashboardContent() {
 
     setSendingBroadcast(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch('/api/admin/broadcast', {
         method: 'POST',
         headers: {
@@ -254,7 +254,7 @@ const handleSubmitAd = async (e) => {
     e.preventDefault()
     if (!newAd.title || !newAd.imageUrl) return
 
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     // 👇 FIXED: Logic to switch between PUT (Update) and POST (Create)
     const method = editingAdId ? 'PUT' : 'POST'
     
@@ -287,7 +287,7 @@ const handleSubmitAd = async (e) => {
   const handleDeleteAd = async (adId) => {
     if (!confirm('Delete this ad?')) return
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`/api/ads?id=${adId}`, { // Changed from /api/admin/ads to /api/ads
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -303,7 +303,7 @@ const handleSubmitAd = async (e) => {
     if (!confirm('🗑️ Delete this event permanently?')) return
     setProcessingId(eventId)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`/api/events/${eventId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -319,7 +319,7 @@ const handleSubmitAd = async (e) => {
   const handleDeleteMessage = async (msgId) => {
     if (!confirm('🗑️ Delete this message?')) return
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`/api/admin/messages?id=${msgId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -358,7 +358,7 @@ const handleSubmitAd = async (e) => {
     if (scheduleForm.daysOfWeek.length === 0) return alert('Select at least one day')
     
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch('/api/admin/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -379,7 +379,7 @@ const handleSubmitAd = async (e) => {
   const handleDeleteSchedule = async (id) => {
     if (!confirm('Stop this campaign?')) return
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       await fetch(`/api/admin/schedules?id=${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

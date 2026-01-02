@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { Bell, BellOff } from 'lucide-react'
 import { requestNotificationPermission } from '@/lib/firebase'
-import { getStoredUser } from '@/lib/auth-utils'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function NotificationToggle() {
   const [enabled, setEnabled] = useState(false)
@@ -22,7 +22,7 @@ export default function NotificationToggle() {
 
     setLoading(true)
     try {
-      const user = getStoredUser()
+      const user = getUserData()
       if (!user) {
         alert('Please login first')
         return

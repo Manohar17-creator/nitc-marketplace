@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, MessageSquare, Briefcase, Star, Users as UsersIcon, Plus, Trash2, LogOut } from 'lucide-react'
 import Link from 'next/link'
-import { getStoredUser } from '@/lib/auth-utils'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 import CreatePostModal from '@/components/CreatePostModal'
 
 export default function CommunityDetailPage({ params }) {
@@ -50,7 +50,7 @@ export default function CommunityDetailPage({ params }) {
     init()
 
     if (typeof window !== 'undefined') {
-      const user = getStoredUser()
+      const user = getUserData()
       if (user) setCurrentUserId(user.id)
       else router.push('/login')
     }
@@ -90,7 +90,7 @@ export default function CommunityDetailPage({ params }) {
       let url = `/api/communities/${id}/posts?type=${type}`
       
       if (type === 'portfolio') {
-        const token = localStorage.getItem('token')
+        const token = getAuthToken()
         if (!token) {
           setPosts([])
           setCachedPosts(prev => ({ ...prev, portfolio: [] }))
@@ -100,7 +100,7 @@ export default function CommunityDetailPage({ params }) {
         url = `/api/communities/${id}/posts/my-portfolio`
       }
 
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
 
       const response = await fetch(url, { headers })
@@ -178,7 +178,7 @@ export default function CommunityDetailPage({ params }) {
   const handleLeaveCommunity = async () => {
       if (!confirm('Are you sure you want to leave this community?')) return
       try {
-        const token = localStorage.getItem('token')
+        const token = getAuthToken()
         const response = await fetch(`/api/communities/${communityId}/join`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
@@ -193,7 +193,7 @@ export default function CommunityDetailPage({ params }) {
   const handleDeletePost = async (postId) => {
       if (!confirm('Delete this post?')) return
       try {
-        const token = localStorage.getItem('token')
+        const token = getAuthToken()
         const response = await fetch(`/api/communities/posts/${postId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }

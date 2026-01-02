@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { User, Phone, CheckCircle, Sparkles } from 'lucide-react'
+import { getUserData, getAuthToken, isAuthenticated, setStoredUser } from '@/lib/auth-client'
 
 export default function CompleteProfile() {
   const router = useRouter()
@@ -15,51 +16,28 @@ export default function CompleteProfile() {
   })
 
   useEffect(() => {
-    const getCookie = (name) => {
-      const value = `; ${document.cookie}`
-      const parts = value.split(`; ${name}=`)
-      if (parts.length === 2) return parts.pop().split(';').shift()
-      return null
-    }
-
-    const token = getCookie('auth_token') || localStorage.getItem('token')
-    const userDataCookie = getCookie('user_data')
-    
-    if (!token) {
+    // ✅ SIMPLIFIED: Use utility functions
+    if (!isAuthenticated()) {
       router.push('/login')
       return
     }
 
-    if (!localStorage.getItem('token')) {
-      localStorage.setItem('token', token)
+    const user = getUserData()
+    
+    if (!user) {
+      router.push('/login')
+      return
     }
 
-    try {
-      let user
-      if (userDataCookie) {
-        user = JSON.parse(decodeURIComponent(userDataCookie))
-      } else {
-        const userStr = localStorage.getItem('user')
-        user = userStr ? JSON.parse(userStr) : null
-      }
+    setUserData(user)
+    setFormData({
+      name: user.name || '',
+      phone: user.phone || ''
+    })
 
-      if (!user) {
-        router.push('/login')
-        return
-      }
-
-      setUserData(user)
-      setFormData({
-        name: user.name || '',
-        phone: user.phone || ''
-      })
-
-      if (user.phone) {
-        router.push('/')
-      }
-    } catch (e) {
-      console.error('Error parsing user data:', e)
-      router.push('/login')
+    // If user already has phone, redirect to home
+    if (user.phone) {
+      router.push('/')
     }
   }, [router])
 
@@ -78,10 +56,14 @@ export default function CompleteProfile() {
       return
     }
 
-    const token = localStorage.getItem('token') || 
-                  document.cookie.split('; ')
-                    .find(row => row.startsWith('auth_token='))
-                    ?.split('=')[1]
+    // ✅ SIMPLIFIED: Use utility function
+    const token = getAuthToken()
+
+    if (!token) {
+      setError('Authentication token not found. Please login again.')
+      setLoading(false)
+      return
+    }
 
     try {
       const res = await fetch('/api/user/update-profile', {
@@ -96,8 +78,12 @@ export default function CompleteProfile() {
       const data = await res.json()
 
       if (res.ok) {
-        localStorage.setItem('user', JSON.stringify(data.user))
+        // ✅ SIMPLIFIED: Use utility function
+        setStoredUser(data.user)
+        
+        // Also update cookie for consistency
         document.cookie = `user_data=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${60 * 60 * 24 * 7}`
+        
         router.push('/')
       } else {
         setError(data.error || 'Failed to update profile')

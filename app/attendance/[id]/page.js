@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Calendar } from 'lucide-react'
 import AttendanceFilters from '../AttendanceFilters'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function SubjectAttendancePage() {
   const router = useRouter()
@@ -19,9 +20,9 @@ export default function SubjectAttendancePage() {
   useEffect(() => {
     const fetchSubjectDetail = async () => {
       try {
-        const token = localStorage.getItem('token')
+        const token = getAuthToken()
         const res = await fetch(`/api/attendance/subjects/${id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${token}` },
         })
         const data = await res.json()
 

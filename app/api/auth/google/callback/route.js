@@ -78,7 +78,7 @@ export async function GET(request) {
       )
     }
 
-    const token = generateToken(user._id.toString())
+    const token = await generateToken(user._id.toString()) // ✅ NEW (Async)
     
     // 2. Richer User Data (From Snippet 2)
     const userObj = {

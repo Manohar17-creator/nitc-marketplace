@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Loader } from 'lucide-react'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function EditListing({ params }) {
   const router = useRouter()
@@ -74,7 +75,7 @@ export default function EditListing({ params }) {
     setError('')
 
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       if (!token) {
         router.push('/login')
         return

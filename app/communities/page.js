@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, ChevronRight, Search, Plus, X } from 'lucide-react'
 import Link from 'next/link'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function CommunitiesPage() {
   const router = useRouter()
@@ -16,12 +17,10 @@ export default function CommunitiesPage() {
   const toggleSearch = () => setIsSearchVisible(prev => !prev)
 
   useEffect(() => {
-    // ✅ Check authentication
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      return
-    }
+  if (!isAuthenticated()) {
+    router.push('/login')
+    return
+  }
 
     // Load from cache immediately (for instant UI)
     const cachedCommunities = localStorage.getItem('cached_communities')
@@ -82,7 +81,7 @@ export default function CommunitiesPage() {
 
   const fetchMyCommunities = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       if (!token) return
 
       // 👇 FIX 2: Add { cache: 'no-store' } here too
@@ -106,7 +105,7 @@ export default function CommunitiesPage() {
 
   const handleJoinCommunity = async (communityId) => {
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       if (!token) {
         router.push('/login')
         return

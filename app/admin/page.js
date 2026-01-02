@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Check, X, Clock, Trash2, Plus, Users, Shield } from 'lucide-react'
-import { getStoredUser } from '@/lib/auth-utils'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -19,7 +19,7 @@ export default function AdminDashboard() {
   const [newComm, setNewComm] = useState({ name: '', description: '', icon: '⚡' })
 
   useEffect(() => {
-    const user = getStoredUser()
+    const user = getUserData()
     // Admin Check
     if (user?.email !== 'kandula_b220941ec@nitc.ac.in') {
       alert('Access denied - Admin only')
@@ -32,7 +32,7 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const headers = { 'Authorization': `Bearer ${token}` }
 
       // 1. Fetch Requests
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
     if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this request?`)) return
     setProcessingId(requestId)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`/api/admin/community-requests/${requestId}/${action}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
     
     setProcessingId(commId)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch(`/api/communities/${commId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
     if (!newComm.name || !newComm.description) return
 
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch('/api/communities', { // Direct creation endpoint
         method: 'POST',
         headers: {

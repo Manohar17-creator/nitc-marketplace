@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { MapPin, Calendar as CalIcon, Plus, Flag, Trash2, Heart, Search, Calendar, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import AdCard from '@/components/AdCard'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 // Helper for "Read More"
 function EventDescription({ text }) {
@@ -31,7 +32,7 @@ export default function EventsPage() {
 
   useEffect(() => {
     // 1. User Setup
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]))
@@ -90,7 +91,7 @@ export default function EventsPage() {
   }
 
   const handleInterest = async (eventId, index) => {
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     if (!token) return router.push('/auth/login')
 
     // Optimistic Update
@@ -124,7 +125,7 @@ export default function EventsPage() {
 
   const handleDelete = async (eventId) => {
     if (!confirm('Are you sure you want to delete this event?')) return
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     
     // Optimistic delete
     const originalFeed = [...feed]
@@ -153,7 +154,7 @@ export default function EventsPage() {
 
   const handleReport = async (eventId) => {
     if (!confirm('Report this event as spam/fake?')) return
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     
     try {
       const res = await fetch('/api/events/report', {

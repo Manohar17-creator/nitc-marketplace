@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft, Calendar, MapPin, AlignLeft, Image as ImageIcon, Type, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function CreateEvent() {
   const router = useRouter()
@@ -19,7 +20,7 @@ export default function CreateEvent() {
   // Redirect if not logged in
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       if (!token) {
         router.push('/login')
       }
@@ -50,7 +51,7 @@ export default function CreateEvent() {
       return
     }
 
-    const token = localStorage.getItem('token')
+    const token = getAuthToken()
     
     try {
       const res = await fetch('/api/events', {

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Info, Mail } from 'lucide-react'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function RequestCommunityPage() {
   const router = useRouter()
@@ -36,7 +37,7 @@ export default function RequestCommunityPage() {
     }
 
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       if (!token) {
         router.push('/login')
         return

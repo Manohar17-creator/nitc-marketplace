@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Send, Bell } from 'lucide-react'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function BroadcastPage() {
   const router = useRouter()
@@ -14,13 +15,14 @@ export default function BroadcastPage() {
 
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       const res = await fetch('/api/admin/broadcast', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
+      credentials: 'include',
         body: JSON.stringify(form)
       })
 

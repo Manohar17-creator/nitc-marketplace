@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Upload, X, ArrowLeft, Loader, Search, MapPin, Calendar, Gift } from 'lucide-react'
 import { compressImage } from '@/lib/image-compression'
+import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 export default function PostLostFound() {
   const router = useRouter()
@@ -31,7 +32,7 @@ export default function PostLostFound() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       if (!token) {
         router.push('/login')
       }
@@ -147,7 +148,7 @@ const removeImage = (index) => {
     }
 
     try {
-      const token = localStorage.getItem('token')
+      const token = getAuthToken()
       if (!token) {
         router.push('/login')
         return
