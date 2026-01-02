@@ -16,29 +16,27 @@ export default function CompleteProfile() {
   })
 
   useEffect(() => {
-    // ✅ SIMPLIFIED: Use utility functions
     if (!isAuthenticated()) {
       router.push('/login')
       return
     }
 
     const user = getUserData()
-    
-    if (!user) {
-      router.push('/login')
+    if (!user) return
+
+    // ✅ FIX: Only redirect if the phone number is valid and clean
+    // This prevents the redirect loop caused by your "9133949468 " entry
+    const cleanExistingPhone = user.phone ? user.phone.trim() : ''
+    if (cleanExistingPhone.length >= 10) {
+      router.push('/')
       return
     }
 
     setUserData(user)
     setFormData({
       name: user.name || '',
-      phone: user.phone || ''
+      phone: cleanExistingPhone // Show the trimmed version in the input
     })
-
-    // If user already has phone, redirect to home
-    if (user.phone) {
-      router.push('/')
-    }
   }, [router])
 
   const handleChange = (e) => {
@@ -46,25 +44,20 @@ export default function CompleteProfile() {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     setLoading(true)
     setError('')
 
-    if (formData.phone.length < 10) {
-      setError('Please enter a valid phone number')
+    // ✅ DATA CLEANING: Remove spaces and non-digits
+    const cleanPhone = formData.phone.replace(/\D/g, '')
+    
+    if (cleanPhone.length < 10) {
+      setError('Please enter a valid 10-digit phone number')
       setLoading(false)
       return
     }
 
-    // ✅ SIMPLIFIED: Use utility function
     const token = getAuthToken()
-
-    if (!token) {
-      setError('Authentication token not found. Please login again.')
-      setLoading(false)
-      return
-    }
-
     try {
       const res = await fetch('/api/user/update-profile', {
         method: 'PUT',
@@ -72,25 +65,28 @@ export default function CompleteProfile() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          phone: cleanPhone 
+        })
       })
 
       const data = await res.json()
 
       if (res.ok) {
-        // ✅ SIMPLIFIED: Use utility function
+        // ✅ SYNC: Update both LocalStorage and Cookies
         setStoredUser(data.user)
         
-        // Also update cookie for consistency
-        document.cookie = `user_data=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${60 * 60 * 24 * 7}`
+        // Ensure the cookie used by the middleware/client-lib is updated
+        document.cookie = `user_data=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
         
-        router.push('/')
+        // Short delay to ensure storage is written before redirecting
+        setTimeout(() => router.push('/'), 200)
       } else {
         setError(data.error || 'Failed to update profile')
       }
     } catch (err) {
-      console.error('Profile update error:', err)
-      setError('Something went wrong. Please try again.')
+      setError('Something went wrong. Please check your connection.')
     } finally {
       setLoading(false)
     }
@@ -121,10 +117,8 @@ export default function CompleteProfile() {
             </div>
           )}
           
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Almost There!</h1>
-          <p className="text-gray-500 text-sm">
-            Complete your profile to start using Unyfy
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Complete Profile</h1>
+          <p className="text-gray-500 text-sm">Update your details to continue to Unyfy</p>
         </div>
 
         {error && (
@@ -133,83 +127,47 @@ export default function CompleteProfile() {
           </div>
         )}
 
-        <div className="space-y-6">
-          
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-gray-700 text-xs font-bold mb-2 uppercase tracking-wide">
-              Display Name
-            </label>
+            <label className="block text-gray-700 text-xs font-bold mb-2 uppercase tracking-wide">Display Name</label>
             <div className="relative">
-              <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
                 required
-                minLength={2}
-                className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 transition-all outline-none text-base"
-                placeholder="Your display name"
+                className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                placeholder="Name"
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1.5 ml-1">
-              This is how others will see you on Unyfy
-            </p>
           </div>
 
           <div>
-            <label className="block text-gray-700 text-xs font-bold mb-2 uppercase tracking-wide">
-              Phone Number
-            </label>
+            <label className="block text-gray-700 text-xs font-bold mb-2 uppercase tracking-wide">Phone Number</label>
             <div className="relative">
-              <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="tel"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
                 required
-                pattern="[0-9]{10,12}"
-                className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 transition-all outline-none text-base"
-                placeholder="9876543210"
+                className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                placeholder="Phone number"
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1.5 ml-1">
-              For buyers/sellers to contact you (WhatsApp/Call)
-            </p>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-            <p className="text-xs text-gray-500 mb-1">Your NITC Email</p>
-            <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-              {userData.email}
-              <CheckCircle size={16} className="text-green-500" />
-            </p>
           </div>
 
           <button
-            onClick={handleSubmit}
+            type="submit"
             disabled={loading}
-            className="w-full mt-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold text-base hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold hover:shadow-xl transition-all disabled:opacity-50"
           >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                Saving...
-              </span>
-            ) : (
-              <span className="flex items-center justify-center gap-2">
-                Complete Setup <Sparkles size={20} />
-              </span>
-            )}
+            {loading ? 'Saving...' : 'Complete Setup'}
           </button>
-        </div>
-
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-400">
-            🔒 Your contact info is only visible to verified NITC members
-          </p>
-        </div>
+        </form>
       </div>
     </div>
   )

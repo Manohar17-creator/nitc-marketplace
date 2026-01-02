@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { User, Mail, Phone, MapPin, Edit, Trash2, Plus, LogOut, Package, MessageSquare, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
-import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
+import { getUserData, getAuthToken, logout } from '@/lib/auth-client'
 import NotificationSettingsButton from '@/components/NotificationSettingsButton'
 
 export default function ProfilePage() {
@@ -173,23 +173,14 @@ export default function ProfilePage() {
     }
   }
 
-  const handleLogout = () => {
-    if (confirm('Are you sure you want to logout?')) {
-      if (typeof window !== 'undefined') {
-        // Clear auth
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
+// 1. Add this import at the top if you use next-auth
+// import { signOut } from 'next-auth/react'
 
-        // Clear all caches
-        localStorage.removeItem('cached_subjects')
-        localStorage.removeItem('cached_stats')
-        localStorage.removeItem('cached_communities')
-        localStorage.removeItem('cached_my_community_ids')
-        localStorage.removeItem('cached_my_listings')
-      }
-      router.push('/login')
-    }
+const handleLogout = () => {
+  if (confirm('Are you sure you want to logout?')) {
+    logout() // ✅ This now clears localStorage AND cookies from your lib
   }
+}
 
   const getCategoryEmoji = (category) => {
     const emojiMap = {
