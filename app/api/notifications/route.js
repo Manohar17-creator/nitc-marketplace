@@ -5,95 +5,177 @@ import { ObjectId } from 'mongodb'
 
 export async function GET(request) {
   try {
+    // 1. Verify authentication
     const authHeader = request.headers.get('authorization')
-    const token = authHeader?.split(' ')[1]
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Missing or invalid authorization header' }, { status: 401 })
+    }
+
+    const token = authHeader.split(' ')[1]
     const decoded = verifyToken(token)
 
-    if (!decoded) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!decoded || !decoded.userId) {
+      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
+    }
+
+    // 2. Validate and convert userId
+    let userId
+    try {
+      userId = new ObjectId(decoded.userId)
+    } catch (err) {
+      return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 })
     }
 
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
-    // 1. Fetch RAW notifications
+    // 3. Fetch raw notifications (fetch extra to account for cleanup)
     const rawNotifications = await db.collection('notifications')
-      .find({ userId: new ObjectId(decoded.userId) })
+      .find({ userId })
       .sort({ createdAt: -1 })
-      .limit(60) // Fetch slightly more to account for duplicates/deletions
+      .limit(60)
       .toArray()
 
+    if (rawNotifications.length === 0) {
+      return NextResponse.json({ notifications: [] })
+    }
+
     const validNotifications = []
+    const invalidNotificationIds = []
     
-    // Arrays to collect IDs for verification
+    // Arrays to collect IDs for batch verification
     const listingIds = []
     const postIds = []
     const eventIds = []
 
-    // 🔍 Step 1: Categorize IDs
-    rawNotifications.forEach(n => {
-      if (!n.resourceId) return // Skip legacy items here, handled in loop below
+    // 4. Categorize resource IDs by type
+    rawNotifications.forEach(notif => {
+      // Skip if no resourceId (legacy notifications or system messages)
+      if (!notif.resourceId || !notif.resourceType) return
       
-      if (n.resourceType === 'listing') listingIds.push(new ObjectId(n.resourceId))
-      else if (n.resourceType === 'community_post') postIds.push(new ObjectId(n.resourceId))
-      else if (n.resourceType === 'event') eventIds.push(new ObjectId(n.resourceId))
+      try {
+        const resourceObjectId = new ObjectId(notif.resourceId)
+        
+        if (notif.resourceType === 'listing') {
+          listingIds.push(resourceObjectId)
+        } else if (notif.resourceType === 'community_post') {
+          postIds.push(resourceObjectId)
+        } else if (notif.resourceType === 'event') {
+          eventIds.push(resourceObjectId)
+        }
+      } catch (err) {
+        // Invalid ObjectId format - mark for deletion
+        invalidNotificationIds.push(notif._id)
+      }
     })
 
-    // 🔍 Step 2: Batch Fetch Existence
+    // 5. Batch fetch existing resources (only fetch _id for performance)
     const [existingListings, existingPosts, existingEvents] = await Promise.all([
-      listingIds.length > 0 ? db.collection('listings').find({ _id: { $in: listingIds } }).project({ _id: 1 }).toArray() : [],
-      postIds.length > 0 ? db.collection('community_posts').find({ _id: { $in: postIds } }).project({ _id: 1 }).toArray() : [],
-      eventIds.length > 0 ? db.collection('events').find({ _id: { $in: eventIds } }).project({ _id: 1 }).toArray() : []
+      listingIds.length > 0 
+        ? db.collection('listings').find({ _id: { $in: listingIds } }).project({ _id: 1 }).toArray() 
+        : [],
+      postIds.length > 0 
+        ? db.collection('community_posts').find({ _id: { $in: postIds } }).project({ _id: 1 }).toArray() 
+        : [],
+      eventIds.length > 0 
+        ? db.collection('events').find({ _id: { $in: eventIds } }).project({ _id: 1 }).toArray() 
+        : []
     ])
 
-    const validListingSet = new Set(existingListings.map(i => i._id.toString()))
-    const validPostSet = new Set(existingPosts.map(i => i._id.toString()))
-    const validEventSet = new Set(existingEvents.map(i => i._id.toString()))
+    // Convert to Sets for O(1) lookup
+    const validListingSet = new Set(existingListings.map(item => item._id.toString()))
+    const validPostSet = new Set(existingPosts.map(item => item._id.toString()))
+    const validEventSet = new Set(existingEvents.map(item => item._id.toString()))
     
-    // Set to track duplicates
-    const seenIds = new Set()
+    // Track seen notification IDs to prevent duplicates
+    const seenNotificationIds = new Set()
+    // Track seen resource IDs to prevent duplicate notifications for same resource
+    const seenResourceIds = new Set()
 
-    // 🔍 Step 3: Strict Filtering
+    // 6. Filter and validate notifications
     for (const notif of rawNotifications) {
       let isValid = true
 
-      // A. DEDUPLICATION CHECK
-      // If we've already seen this exact Notification ID, skip it
-      if (seenIds.has(notif._id.toString())) continue;
-      seenIds.add(notif._id.toString());
-      
-      // Also check by Resource ID (prevent 2 notifications for same post)
-      const uniqueKey = notif.resourceId ? notif.resourceId.toString() : notif._id.toString();
-      // (Optional: You can add logic here if you want strict unique resources)
+      // A. Check for duplicate notification IDs
+      const notifIdStr = notif._id.toString()
+      if (seenNotificationIds.has(notifIdStr)) {
+        invalidNotificationIds.push(notif._id)
+        continue
+      }
+      seenNotificationIds.add(notifIdStr)
 
-      // B. LEGACY / DELETED CHECK
-      // If it's a specific type but MISSING resourceId -> It's old garbage -> Invalid
-      if (['listing', 'post', 'event'].includes(notif.type) && !notif.resourceId) {
+      // B. Check for legacy notifications (missing resourceId for specific types)
+      const requiresResource = ['listing', 'community_post', 'event'].includes(notif.resourceType)
+      if (requiresResource && !notif.resourceId) {
         isValid = false
       }
 
-      // C. EXISTENCE CHECK
-      if (notif.resourceId) {
-        const idStr = notif.resourceId.toString()
-        if (notif.resourceType === 'listing' && !validListingSet.has(idStr)) isValid = false
-        if (notif.resourceType === 'community_post' && !validPostSet.has(idStr)) isValid = false
-        if (notif.resourceType === 'event' && !validEventSet.has(idStr)) isValid = false
+      // C. Verify resource still exists
+      if (notif.resourceId && notif.resourceType) {
+        const resourceIdStr = notif.resourceId.toString()
+        
+        // Check resource existence based on type
+        if (notif.resourceType === 'listing' && !validListingSet.has(resourceIdStr)) {
+          isValid = false
+        } else if (notif.resourceType === 'community_post' && !validPostSet.has(resourceIdStr)) {
+          isValid = false
+        } else if (notif.resourceType === 'event' && !validEventSet.has(resourceIdStr)) {
+          isValid = false
+        }
+
+        // D. Optional: Prevent duplicate notifications for same resource
+        // (Uncomment if you want only one notification per resource)
+        /*
+        if (seenResourceIds.has(resourceIdStr)) {
+          invalidNotificationIds.push(notif._id)
+          continue
+        }
+        seenResourceIds.add(resourceIdStr)
+        */
       }
 
+      // E. Add to results or mark for deletion
       if (isValid) {
         validNotifications.push(notif)
       } else {
-        // 🧹 Auto-Delete Dead Notifications (Clean DB)
-        try {
-           await db.collection('notifications').deleteOne({ _id: notif._id })
-        } catch (e) { /* ignore error */ }
+        invalidNotificationIds.push(notif._id)
       }
     }
 
-    return NextResponse.json({ notifications: validNotifications })
+    // 7. Cleanup: Delete invalid notifications in background
+    if (invalidNotificationIds.length > 0) {
+      // Don't await - let it happen in background
+      db.collection('notifications')
+        .deleteMany({ _id: { $in: invalidNotificationIds } })
+        .then(() => {
+          console.log(`🧹 Cleaned up ${invalidNotificationIds.length} invalid notifications for user ${decoded.userId}`)
+        })
+        .catch(err => {
+          console.error('Failed to cleanup notifications:', err)
+        })
+    }
+
+    // 8. Limit to 50 most recent valid notifications
+    const finalNotifications = validNotifications.slice(0, 50)
+
+    return NextResponse.json({ 
+      notifications: finalNotifications,
+      total: finalNotifications.length,
+      cleaned: invalidNotificationIds.length
+    })
 
   } catch (error) {
-    console.error('Fetch notifications error:', error)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    console.error('❌ Fetch notifications error:', error)
+    
+    // Return more details in development
+    if (process.env.NODE_ENV === 'development') {
+      return NextResponse.json({ 
+        error: 'Failed to fetch notifications',
+        details: error.message 
+      }, { status: 500 })
+    }
+    
+    return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 })
   }
 }

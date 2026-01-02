@@ -1,14 +1,22 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Bell, X, CheckCircle, Loader } from 'lucide-react'
+import { Bell, X, CheckCircle, Loader, AlertCircle } from 'lucide-react'
 import { requestNotificationPermission } from '@/lib/firebase'
+import { getUserData } from '@/lib/auth-client'
 
-export default function NotificationSettingsButton({ userId }) {
-  const [status, setStatus] = useState('loading') // Start with loading to prevent flash
+export default function NotificationSettingsButton() {
+  const [status, setStatus] = useState('loading')
   const [error, setError] = useState(null)
+  const [userId, setUserId] = useState(null)
 
-  // ✅ FIX: Check permission status immediately on mount
   useEffect(() => {
+    // Get user ID from auth
+    const user = getUserData()
+    if (user?.id) {
+      setUserId(user.id)
+    }
+
+    // Check notification permission status
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'granted') {
         setStatus('granted')
@@ -18,79 +26,116 @@ export default function NotificationSettingsButton({ userId }) {
         setStatus('default')
       }
     } else {
-      setStatus('default')
+      setStatus('unsupported')
     }
   }, [])
 
   const handleEnableNotifications = async () => {
-    if (status === 'granted') return
+    if (status === 'granted' || !userId) return
 
     setStatus('requesting')
     setError(null)
     
-    const token = await requestNotificationPermission(userId)
+    try {
+      const token = await requestNotificationPermission(userId)
 
-    if (token) {
-      setStatus('granted')
-      localStorage.setItem('notification_asked', 'true')
-    } else {
-      // Check if permission was denied by the user
-      if (Notification.permission === 'denied') {
-        setStatus('denied')
-        setError('Permission denied. Please enable notifications manually in your browser settings (lock icon next to the URL).')
+      if (token) {
+        setStatus('granted')
+        localStorage.setItem('notification_asked', 'true')
       } else {
-        setStatus('default')
-        setError('Setup failed. Please try again.')
+        if (Notification.permission === 'denied') {
+          setStatus('denied')
+          setError('Permission denied. Enable notifications in your browser settings (click the lock icon next to the URL).')
+        } else {
+          setStatus('default')
+          setError('Setup failed. Please try again.')
+        }
       }
+    } catch (err) {
+      console.error('Notification setup error:', err)
+      setStatus('default')
+      setError('An error occurred. Please try again.')
     }
   }
 
   const renderButtonContent = () => {
-    if (status === 'loading') return <span className="opacity-0">...</span> // Invisible while checking
-    
-    if (status === 'requesting') {
-      return (
-        <>
-          <Loader size={16} className="animate-spin" />
-          Enabling...
-        </>
-      )
+    switch (status) {
+      case 'loading':
+        return <span className="opacity-0">Loading...</span>
+      
+      case 'requesting':
+        return (
+          <>
+            <Loader size={16} className="animate-spin" />
+            Enabling...
+          </>
+        )
+      
+      case 'granted':
+        return (
+          <>
+            <CheckCircle size={16} />
+            Notifications Active
+          </>
+        )
+      
+      case 'denied':
+        return (
+          <>
+            <AlertCircle size={16} />
+            Notifications Blocked
+          </>
+        )
+      
+      case 'unsupported':
+        return (
+          <>
+            <AlertCircle size={16} />
+            Not Supported
+          </>
+        )
+      
+      default:
+        return (
+          <>
+            <Bell size={16} />
+            Enable Notifications
+          </>
+        )
     }
-    if (status === 'granted') {
-      return (
-        <>
-          <CheckCircle size={16} />
-          Notifications Active
-        </>
-      )
-    }
-    return (
-      <>
-        <Bell size={16} />
-        Enable Notifications
-      </>
-    )
   }
 
-  // Prevent rendering anything until we check status (optional, but cleaner)
+  const getButtonStyles = () => {
+    switch (status) {
+      case 'granted':
+        return 'bg-green-100 text-green-700 cursor-default border border-green-200'
+      
+      case 'denied':
+        return 'bg-red-50 text-red-600 border border-red-200 cursor-not-allowed'
+      
+      case 'unsupported':
+        return 'bg-gray-100 text-gray-500 border border-gray-200 cursor-not-allowed'
+      
+      case 'requesting':
+        return 'bg-blue-500 text-white cursor-wait'
+      
+      default:
+        return 'bg-blue-600 text-white hover:bg-blue-700 active:scale-98 shadow-sm'
+    }
+  }
+
   if (status === 'loading') {
-     return (
-        <div className="w-full py-3 px-4 rounded-lg bg-gray-100 animate-pulse h-[48px]" />
-     )
+    return (
+      <div className="w-full py-3 px-4 rounded-lg bg-gray-100 animate-pulse h-[48px]" />
+    )
   }
 
   return (
     <div className="space-y-3">
       <button
         onClick={handleEnableNotifications}
-        disabled={status === 'granted' || status === 'requesting'}
-        className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2
-          ${status === 'granted' 
-            ? 'bg-green-100 text-green-700 cursor-default border border-green-200'
-            : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-98 shadow-sm'
-          }
-          ${status === 'denied' && 'bg-red-50 text-red-600 border border-red-200'}
-        `}
+        disabled={status === 'granted' || status === 'requesting' || status === 'denied' || status === 'unsupported' || !userId}
+        className={`w-full py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${getButtonStyles()}`}
       >
         {renderButtonContent()}
       </button>
@@ -98,7 +143,24 @@ export default function NotificationSettingsButton({ userId }) {
       {error && (
         <div className="p-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
           <X size={16} className="mt-0.5 flex-shrink-0" />
-          {error}
+          <span>{error}</span>
+        </div>
+      )}
+
+      {status === 'denied' && (
+        <div className="p-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="font-semibold mb-1">How to enable notifications:</p>
+          <ol className="list-decimal list-inside space-y-1 text-amber-600">
+            <li>Click the lock icon in your browser&apos;s address bar</li>
+            <li>Find &quot;Notifications&quot; and change to &quot;Allow&quot;</li>
+            <li>Refresh this page and try again</li>
+          </ol>
+        </div>
+      )}
+
+      {status === 'unsupported' && (
+        <div className="p-3 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg">
+          Your browser does not support notifications. Try using Chrome, Firefox, Safari, or Edge.
         </div>
       )}
     </div>
