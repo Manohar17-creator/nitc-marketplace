@@ -1,35 +1,16 @@
 /** @type {import('next').NextConfig} */
 
-// 1. Define your security headers
+// 1. Security Headers (Keep your existing robust setup)
 const securityHeaders = [
-  {
-    key: 'X-DNS-Prefetch-Control',
-    value: 'on'
-  },
-  {
-    key: 'Strict-Transport-Security',
-    value: 'max-age=63072000; includeSubDomains; preload'
-  },
-  {
-    key: 'X-Frame-Options',
-    value: 'SAMEORIGIN' // Fixes Clickjacking
-  },
-  {
-    key: 'X-Content-Type-Options',
-    value: 'nosniff' // Fixes MIME sniffing
-  },
-  {
-    key: 'Referrer-Policy',
-    value: 'strict-origin-when-cross-origin'
-  },
-  {
-    key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()' // Blocks unauthorized access to hardware
-  }
+  { key: 'X-DNS-Prefetch-Control', value: 'on' },
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()' }
 ];
 
 const nextConfig = {
-  // Existing configs you already had
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -45,17 +26,21 @@ const nextConfig = {
     return config
   },
 
+  // 2. Optimized Image Configuration
   images: {
-    domains: ['res.cloudinary.com'],
-    formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**', // ✅ The double asterisk allows ANY domain
+      },
+    ],
   },
+  
   compress: true,
 
-  // 👇 ADD THIS NEW BLOCK
   async headers() {
     return [
       {
-        // Apply these headers to all routes in your application
         source: '/:path*',
         headers: securityHeaders,
       },

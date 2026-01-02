@@ -11,17 +11,11 @@ if (getApps().length === 0) {
     const serviceAccount = {
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      // Handle private key newlines correctly for Vercel
-      privateKey: process.env.FIREBASE_PRIVATE_KEY
-        ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-        : undefined,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     }
 
     if (serviceAccount.privateKey) {
-      initializeApp({
-        credential: cert(serviceAccount),
-      })
-      console.log('🔥 Firebase Admin Initialized')
+      initializeApp({ credential: cert(serviceAccount) })
     }
   } catch (error) {
     console.error('Firebase Admin Init Error:', error)
@@ -99,186 +93,103 @@ export async function GET(request) {
 }
 
 // POST new listing
+// ... (imports and Firebase init stay the same)
+
+// POST new listing
 export async function POST(request) {
   try {
     const token = request.headers.get('authorization')?.split(' ')[1]
-    
-    // 🔒 1. Strict Auth Check
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized: Please login' }, { status: 401 })
-    }
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    let decoded;
-    try {
-      decoded = verifyToken(token)
-      if (!decoded) throw new Error('Invalid token')
-    } catch (e) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
+    const decoded = verifyToken(token)
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
 
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
     
-    // Fetch user details
-    const user = await db.collection('users').findOne({
-        $or: [
-        { _id: new ObjectId(decoded.userId) },
-        { _id: decoded.userId } 
-        ]
-    })
+    const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    // 🛡️ 2. RATE LIMITING (Cooldown)
-    const COOLDOWN_MS = 60 * 1000; // 1 Minute
-    const now = Date.now();
-    const lastActionTime = user.lastPostedAt ? new Date(user.lastPostedAt).getTime() : 0;
-
-    if (now - lastActionTime < COOLDOWN_MS) {
-      const waitSeconds = Math.ceil((COOLDOWN_MS - (now - lastActionTime)) / 1000);
-      return NextResponse.json(
-        { error: `Please wait ${waitSeconds}s before posting again.` },
-        { status: 429 }
-      );
+    // Demo cooldown check (5 seconds)
+    const lastPost = user.lastPostedAt ? new Date(user.lastPostedAt).getTime() : 0
+    if (Date.now() - lastPost < 5000) {
+      return NextResponse.json({ error: 'Please wait a moment' }, { status: 429 })
     }
 
     const data = await request.json()
-    const { 
-      title, description, price, category, images, location, 
-      lostFoundType, reward, lastSeenLocation, lastSeenDate, contactMethod 
-    } = data
+    // Destructure specifically for Lost & Found support
+    const { title, description, price, category, images, location, lostFoundType } = data
 
-    if (!title || !description || !category) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-
-    // Create listing object
     const newListing = {
-      title,
-      description,
-      price: price ? Number(price) : 0,
+      title: String(title).trim(),
+      description: String(description).trim(),
+      price: Number(price) || 0,
       category,
       images: images || [],
-      seller: user._id, 
-      sellerName: user.name,
-      sellerPhone: user.phone || '', // Use actual user data
       sellerEmail: user.email,
-      location: location || 'NIT Calicut',
+      sellerName: user.name,
+      location: location || 'NITC',
       status: 'active',
       createdAt: new Date(),
-      updatedAt: new Date()
     }
 
+    // Add Lost/Found specific fields
     if (category === 'lost-found') {
-      newListing.lostFoundType = lostFoundType
-      newListing.reward = reward ? Number(reward) : 0
-      newListing.lastSeenLocation = lastSeenLocation || location
-      newListing.lastSeenDate = lastSeenDate || new Date().toISOString().split('T')[0]
-      newListing.contactMethod = contactMethod || 'phone'
+      newListing.lostFoundType = lostFoundType || 'lost'
     }
 
-    // 3. Database Operations (Insert + Update Cooldown)
     const result = await db.collection('listings').insertOne(newListing)
     const listingId = result.insertedId
 
-    // Update user's lastPostedAt immediately
     await db.collection('users').updateOne(
       { _id: user._id },
       { $set: { lastPostedAt: new Date() } }
     )
 
-    console.log(`✅ Listing created: ${listingId}`)
+    // ✅ FIX: Clean string construction to avoid "not a function" error
+    const cleanTitle = String(title).trim()
+    let notifTitle = `🛍️ New Listing`
+    let notifBody = `${cleanTitle}`
 
-    // --- 🚨 NOTIFICATIONS LOGIC (Fire & Forget Pattern) ---
-    // We wrap this entire block so notification failures don't crash the response
-    try {
-      const allUsers = await db.collection('users')
-        .find({ 
-          fcmToken: { $exists: true, $ne: null },
-          _id: { $ne: user._id } // Don't notify self
-        })
-        .project({ _id: 1, fcmToken: 1 })
-        .limit(499) // Safety limit for Vercel timeout protection
-        .toArray()
-
-      if (allUsers.length > 0) {
-        // ... (Emoji Logic Unchanged) ...
-        const categoryEmojis = {
-          books: '📚', electronics: '💻', tickets: '🎫', rides: '🚗',
-          housing: '🏠', events: '🎉', misc: '🎁',
-          'lost-found': lostFoundType === 'lost' ? '🔍' : '✨' 
-        }
-        const emoji = categoryEmojis[category] || '📦'
-
-        let notifTitle = '🛍️ New Listing'
-        let notifBody = `${emoji} ${title}`
-        let notifType = 'new_listing'
-
-        if (category === 'lost-found') {
-           if (lostFoundType === 'lost') {
-             notifTitle = '🔍 Item Lost'
-             notifBody = `Lost: ${title}${reward > 0 ? ` - ₹${reward} reward` : ''}`
-             notifType = 'lost_item'
-           } else {
-             notifTitle = '✨ Item Found'
-             notifBody = `Found: ${title} - Claim it now!`
-             notifType = 'found_item'
-           }
-        } else {
-           notifBody = `${emoji} ${title}${price > 0 ? ` - ₹${price.toLocaleString()}` : ''}`
-        }
-
-        // DB Notifications
-        const dbNotifications = allUsers.map(u => ({
-          userId: u._id,
-          type: notifType,
-          title: notifTitle,
-          message: notifBody,
-          listingId: listingId,
-          link: `/listing/${listingId}`,
-          icon: emoji,
-          read: false,
-          createdAt: new Date()
-        }))
-
-        // Insert notifications asynchronously (don't block response too long)
-        await db.collection('notifications').insertMany(dbNotifications)
-
-        // Firebase Push
-        const tokens = allUsers.map(u => u.fcmToken)
-        const messaging = getMessaging() 
-        
-        // Use try-catch specifically for the external API call
-        try {
-          await messaging.sendEachForMulticast({
-            tokens: tokens,
-            notification: { title: notifTitle, body: notifBody },
-            data: { url: `/listing/${listingId}`, listingId: listingId.toString() }
-          })
-          console.log(`🔔 Notifications sent to ${tokens.length} users`)
-        } catch (fcmError) {
-          console.error('FCM Send Error:', fcmError)
-        }
-      }
-
-    } catch (notifError) {
-      // Just log error, do NOT fail the request
-      console.error('❌ Notification logic failed:', notifError)
+    if (category === 'lost-found') {
+      notifTitle = lostFoundType === 'found' ? `✨ Item Found` : `🔍 Item Lost`
+      notifBody = `${cleanTitle} @ ${location || 'NITC'}`
+    } else {
+      notifTitle = `🛍️ New in ${category}`
+      const fmtPrice = Number(price).toLocaleString('en-IN')
+      notifBody = cleanTitle + " - ₹" + fmtPrice // Manual concat to be safe
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Listing created successfully',
-      listingId: listingId
-    })
+    // 3. Background Notification Task
+    (async () => {
+      try {
+        const allUsers = await db.collection('users')
+          .find({ fcmToken: { $exists: true, $ne: null }, _id: { $ne: user._id } })
+          .project({ fcmToken: 1 })
+          .limit(400)
+          .toArray()
+
+        if (allUsers.length > 0) {
+          const tokens = [...new Set(allUsers.map(u => u.fcmToken))]
+          const messaging = getMessaging()
+          
+          await messaging.sendEachForMulticast({
+            tokens,
+            notification: { title: notifTitle, body: notifBody },
+            data: { url: `/listing/${listingId.toString()}` },
+            android: { priority: 'high' }, // Crucial for Android delivery
+            webpush: { headers: { Urgency: 'high' } }
+          })
+        }
+      } catch (err) {
+        console.error("FCM Error:", err)
+      }
+    })()
+
+    return NextResponse.json({ success: true, listingId })
 
   } catch (error) {
-    console.error('❌ Create listing error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create listing' },
-      { status: 500 }
-    )
+    console.error('CRITICAL POST ERROR:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

@@ -72,23 +72,24 @@ export async function POST(request, context) {
     }
 
     const data = await request.json()
-    const { type, title, content, embedUrl, embedType } = data
+    const { type, title, content, embedUrl, embedType, imageUrl } = data
 
     // 3. Create Post
     const newPost = {
-      communityId: new ObjectId(id),
-      authorId: new ObjectId(decoded.userId),
-      authorName: user.name,
-      authorEmail: user.email,
-      authorImage: user.image || null,
-      type,
-      title: title || '',
-      content,
-      embedUrl: embedUrl || null,
-      embedType: embedType || null,
-      commentCount: 0,
-      createdAt: new Date()
-    }
+  communityId: new ObjectId(id),
+  authorId: new ObjectId(decoded.userId),
+  authorName: user.name,
+  authorEmail: user.email,
+  authorImage: user.image || null,
+  type,
+  title: title || '',
+  content,
+  embedUrl: embedUrl || null,
+  embedType: embedType || null,
+  imageUrl: imageUrl || null, // ← Add this line for Cloudinary uploads
+  commentCount: 0,
+  createdAt: new Date()
+}
 
     const result = await db.collection('community_posts').insertOne(newPost)
 

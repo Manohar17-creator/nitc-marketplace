@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { MapPin, Calendar as CalIcon, Plus, Flag, Trash2, Heart, Search, Calendar, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import AdCard from '@/components/AdCard'
+import Image from 'next/image'
 import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 // Helper for "Read More"
@@ -20,12 +21,52 @@ function EventDescription({ text }) {
   )
 }
 
+// Full-screen Image Modal
+function ImageModal({ imageUrl, onClose, title }) {
+  useEffect(() => {
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [])
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <button 
+        onClick={onClose}
+        className="absolute top-4 right-4 text-white bg-black/50 p-2 rounded-full hover:bg-black/70 transition-colors z-10"
+      >
+        <X size={24} />
+      </button>
+      
+      <div className="relative max-w-4xl max-h-[90vh] w-full">
+        <img 
+          src={imageUrl} 
+          alt={title}
+          className="w-full h-full object-contain rounded-lg"
+          onClick={(e) => e.stopPropagation()}
+        />
+        {title && (
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 rounded-b-lg">
+            <p className="text-white font-semibold text-center">{title}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function EventsPage() {
   const [feed, setFeed] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState(null)
   const [isSearchVisible, setIsSearchVisible] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedImage, setSelectedImage] = useState(null)
   const router = useRouter()
 
   const CACHE_KEY = 'events_feed_cache'
@@ -53,7 +94,6 @@ export default function EventsPage() {
     }
 
     // 3. Fetch Fresh Data (Background Update)
-    // We pass 'true' if we found cache, so we don't show a spinner on top of content
     const hasCache = !!cachedData
     fetchEvents(!hasCache) 
 
@@ -69,7 +109,6 @@ export default function EventsPage() {
     if (showSpinner) setLoading(true)
     
     try {
-      // Add timestamp to prevent browser caching of the API call itself
       const res = await fetch(`/api/events?t=${Date.now()}`, { 
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' }
@@ -79,7 +118,6 @@ export default function EventsPage() {
         const data = await res.json()
         if (data.feed) {
           setFeed(data.feed)
-          // ✅ UPDATE CACHE
           localStorage.setItem(CACHE_KEY, JSON.stringify(data.feed))
         }
       }
@@ -109,7 +147,6 @@ export default function EventsPage() {
     }
     
     setFeed(newFeed)
-    // Update cache optimistically too so it persists if they navigate away
     localStorage.setItem(CACHE_KEY, JSON.stringify(newFeed))
 
     try {
@@ -198,6 +235,15 @@ export default function EventsPage() {
   return (
     <div className="bg-gray-50 min-h-screen">
       
+      {/* Image Modal */}
+      {selectedImage && (
+        <ImageModal 
+          imageUrl={selectedImage.url} 
+          title={selectedImage.title}
+          onClose={() => setSelectedImage(null)} 
+        />
+      )}
+
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px]">
@@ -250,8 +296,34 @@ export default function EventsPage() {
               return (
                 <div key={event._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                   {event.image && (
-                    <div className="relative h-48 w-full">
-                      <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+                    <div 
+                      className="relative w-full h-48 sm:h-56 bg-gray-200 overflow-hidden cursor-pointer group"
+                      onClick={() => setSelectedImage({ url: event.image, title: event.title })}
+                    >
+                      <img 
+                        src={event.image} 
+                        alt={event.title}
+                        className="w-full h-full object-cover block group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          const parent = e.target.parentElement;
+                          parent.classList.add('flex', 'flex-col', 'items-center', 'justify-center', 'bg-blue-50');
+                          parent.classList.remove('cursor-pointer', 'group');
+                          parent.onclick = null;
+                          parent.innerHTML = `
+                            <div class="text-blue-400 flex flex-col items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1 opacity-40"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                              <span class="text-[10px] font-bold uppercase tracking-widest opacity-40">Preview Unavailable</span>
+                            </div>
+                          `;
+                        }}
+                      />
+                      {/* Hover overlay */}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
+                          Tap to view
+                        </div>
+                      </div>
                     </div>
                   )}
                   

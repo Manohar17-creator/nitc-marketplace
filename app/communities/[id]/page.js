@@ -15,15 +15,13 @@ export default function CommunityDetailPage({ params }) {
   const [posts, setPosts] = useState([])
   const [members, setMembers] = useState([])
   
-  // 🆕 Split Loading States
-  const [pageLoading, setPageLoading] = useState(true) // For Community Info
-  const [postsLoading, setPostsLoading] = useState(true) // For Posts List
+  const [pageLoading, setPageLoading] = useState(true)
+  const [postsLoading, setPostsLoading] = useState(true)
   
   const [showPostModal, setShowPostModal] = useState(false)
   const [currentUserId, setCurrentUserId] = useState(null)
   const [showMenu, setShowMenu] = useState(false)
 
-  // ✅ CACHING STATE
   const [cachedPosts, setCachedPosts] = useState({
     feed: null,
     job: null,
@@ -33,16 +31,12 @@ export default function CommunityDetailPage({ params }) {
 
   useEffect(() => {
     const init = async () => {
-      // 1. Get Params
       const resolvedParams = await params
       const id = resolvedParams.id
       setCommunityId(id)
 
-      // 2. Fetch Community Info (Page Load)
       await fetchCommunity(id)
       
-      // 3. Fetch Initial Posts (Posts Load)
-      // We set this manually here to ensure the spinner shows immediately
       setPostsLoading(true) 
       await fetchPosts(id, 'feed')
     }
@@ -56,12 +50,10 @@ export default function CommunityDetailPage({ params }) {
     }
   }, [params, router])
 
-  // ✅ LISTEN FOR NEW POSTS VIA WEBSOCKET (Polling)
   useEffect(() => {
     if (!communityId) return
     const pollInterval = setInterval(() => {
       if (activeTab !== 'members') {
-        // Pass 'true' for isBackground to prevent loading spinner during polling
         fetchPosts(communityId, activeTab, true) 
       }
     }, 5000)
@@ -78,13 +70,12 @@ export default function CommunityDetailPage({ params }) {
     } catch (error) {
       console.error('Failed to fetch community:', error)
     } finally {
-      setPageLoading(false) // Only stop page loading here
+      setPageLoading(false)
     }
   }
 
-  // ✅ OPTIMIZED FETCH WITH CACHING & LOADING CONTROL
   const fetchPosts = async (id, type, isBackground = false) => {
-    if (!isBackground) setPostsLoading(true) // Show spinner for manual actions
+    if (!isBackground) setPostsLoading(true)
     
     try {
       let url = `/api/communities/${id}/posts?type=${type}`
@@ -108,20 +99,19 @@ export default function CommunityDetailPage({ params }) {
       
       if (response.ok) {
         setPosts(data.posts)
-        // Update Cache
         setCachedPosts(prev => ({ ...prev, [type]: data.posts }))
       }
     } catch (error) {
       console.error('Failed to fetch posts:', error)
     } finally {
-      if (!isBackground) setPostsLoading(false) // Hide spinner
+      if (!isBackground) setPostsLoading(false)
     }
   }
 
   const fetchMembers = async (id) => {
     if (cachedMembers) {
       setMembers(cachedMembers)
-      setPostsLoading(false) // Instant load if cached
+      setPostsLoading(false)
       return
     }
 
@@ -140,39 +130,46 @@ export default function CommunityDetailPage({ params }) {
     }
   }
 
-  // ✅ INSTANT TAB SWITCHING LOGIC
   const handleTabChange = (tab) => {
     setActiveTab(tab)
     
     if (tab === 'members') {
       fetchMembers(communityId)
     } else {
-      // Check Cache First
       if (cachedPosts[tab]) {
-        setPosts(cachedPosts[tab]) // ⚡ Instant render
-        setPostsLoading(false)     // No spinner needed
+        setPosts(cachedPosts[tab])
+        setPostsLoading(false)
       } else {
-        setPosts([])               // Clear old posts
-        fetchPosts(communityId, tab, false) // Fetch new (Show spinner)
+        setPosts([])
+        fetchPosts(communityId, tab, false)
       }
     }
   }
 
-  // ... (Keep handleCreatePost, handleLeaveCommunity, handleDeletePost, getEmbedPreview, formatTime as they were) ...
   const handleCreatePost = async (postData) => {
       try {
-        const res = await fetch('/api/posts', { 
+        const token = getAuthToken()
+        // ✅ FIX: Use correct API route with communityId
+        const res = await fetch(`/api/communities/${communityId}/posts`, { 
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...postData, communityId: communityId })
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(postData)
         })
+        
         if (res.ok) {
           setShowPostModal(false)
-          fetchPosts(communityId, activeTab) // Refresh current tab
+          fetchPosts(communityId, activeTab)
         } else {
-          throw new Error('Failed to create post')
+          const errorData = await res.json()
+          throw new Error(errorData.error || 'Failed to create post')
         }
-      } catch (error) { throw error }
+      } catch (error) { 
+        alert(error.message)
+        throw error 
+      }
   }
 
   const handleLeaveCommunity = async () => {
@@ -210,19 +207,162 @@ export default function CommunityDetailPage({ params }) {
       } catch (error) { console.error('Failed to delete:', error) }
   }
 
-  const getEmbedPreview = (embedUrl, embedType) => {
+  const getEmbedPreview = (post) => {
+      // Priority 1: Check for uploaded image
+      if (post.imageUrl) {
+        return (
+          <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+            <img 
+              src={post.imageUrl} 
+              alt="Post image" 
+              className="w-full h-auto object-contain max-h-[600px]"
+              onError={(e) => {
+                e.target.style.display = 'none'
+                e.target.nextSibling.style.display = 'block'
+              }}
+            />
+            <div style={{display: 'none'}} className="p-4 bg-gray-50 text-center">
+              <p className="text-gray-500 text-sm">Failed to load image</p>
+            </div>
+          </div>
+        )
+      }
+
+      // Priority 2: Check for embed URL
+      const embedUrl = post.embedUrl
       if (!embedUrl) return null
+      
+      let embedType = post.embedType
+      
+      // Auto-detect media type if not specified
+      if (!embedType || embedType === 'link') {
+        if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(embedUrl)) {
+          embedType = 'image'
+        } else if (/(?:youtube\.com|youtu\.be)/.test(embedUrl)) {
+          embedType = 'youtube'
+        } else if (/instagram\.com/.test(embedUrl)) {
+          embedType = 'instagram'
+        } else if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(embedUrl)) {
+          embedType = 'video'
+        }
+      }
+      
+      // Handle YouTube videos
       if (embedType === 'youtube') {
-        const videoId = embedUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1]
+        const patterns = [
+          /(?:youtube\.com\/watch\?v=)([^&\s]+)/,
+          /(?:youtu\.be\/)([^&\s?]+)/,
+          /(?:youtube\.com\/embed\/)([^&\s]+)/,
+          /(?:youtube\.com\/v\/)([^&\s]+)/
+        ]
+        
+        let videoId = null
+        for (const pattern of patterns) {
+          const match = embedUrl.match(pattern)
+          if (match && match[1]) {
+            videoId = match[1]
+            break
+          }
+        }
+        
         if (videoId) {
           return (
-            <div className="mt-3 aspect-video rounded-lg overflow-hidden">
-              <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${videoId}`} frameBorder="0" allowFullScreen />
+            <div className="mt-3 aspect-video rounded-lg overflow-hidden bg-black shadow-md">
+              <iframe 
+                width="100%" 
+                height="100%" 
+                src={`https://www.youtube.com/embed/${videoId}`} 
+                frameBorder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowFullScreen
+                className="w-full h-full"
+              />
             </div>
           )
         }
       }
-      return <a href={embedUrl} target="_blank" className="mt-3 block text-blue-600 hover:text-blue-700 text-sm break-all">🔗 {embedUrl}</a>
+      
+      // Handle Instagram (show as link with preview card)
+      if (embedType === 'instagram') {
+        return (
+          <a 
+            href={embedUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="mt-3 block border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 rounded-lg flex items-center justify-center text-white text-xl">
+                📷
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-gray-900">Instagram Post</div>
+                <div className="text-sm text-gray-500 truncate">{embedUrl}</div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </div>
+          </a>
+        )
+      }
+      
+      // Handle images
+      if (embedType === 'image') {
+        return (
+          <div className="mt-3 rounded-lg overflow-hidden border border-gray-200">
+            <img 
+              src={embedUrl} 
+              alt="Shared image" 
+              className="w-full h-auto object-contain max-h-[600px]"
+              onError={(e) => {
+                e.target.style.display = 'none'
+                e.target.nextSibling.style.display = 'block'
+              }}
+            />
+            <div style={{display: 'none'}} className="p-4 bg-gray-50 text-center">
+              <p className="text-gray-500 text-sm">Failed to load image</p>
+              <a href={embedUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 text-sm">View original link</a>
+            </div>
+          </div>
+        )
+      }
+      
+      // Handle direct video files
+      if (embedType === 'video') {
+        return (
+          <div className="mt-3 rounded-lg overflow-hidden bg-black">
+            <video 
+              controls 
+              className="w-full h-auto max-h-[500px]"
+              preload="metadata"
+            >
+              <source src={embedUrl} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        )
+      }
+      
+      // Fallback: show as link with card
+      return (
+        <a 
+          href={embedUrl} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="mt-3 block border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors group"
+        >
+          <div className="flex items-center gap-2">
+            <div className="text-blue-600">🔗</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm text-gray-700 truncate group-hover:text-blue-600">{embedUrl}</div>
+            </div>
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </div>
+        </a>
+      )
   }
 
   const formatTime = (date) => {
@@ -230,8 +370,6 @@ export default function CommunityDetailPage({ params }) {
       if (diffMins < 1) return 'Just now'; if (diffMins < 60) return `${diffMins}m ago`; if (diffHours < 24) return `${diffHours}h ago`; if (diffDays === 1) return 'Yesterday'; return posted.toLocaleDateString();
   }
 
-
-  // 🛑 PAGE LOADING SPINNER (Only for initial community info)
   if (pageLoading || !community) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -244,7 +382,7 @@ export default function CommunityDetailPage({ params }) {
     <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col pb-nav-safe">
       
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
+      <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-50 shadow-lg safe-top">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px] transition-all duration-300 gap-3">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <button onClick={() => router.push('/communities')} className="flex-shrink-0 hover:opacity-80 active:scale-95 transition p-1 -ml-1">
@@ -259,7 +397,7 @@ export default function CommunityDetailPage({ params }) {
             <div className="relative">
               <button onClick={() => setShowMenu((prev) => !prev)} className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors text-xl font-bold pb-1">⋯</button>
               {showMenu && (
-                <div className="absolute right-0 mt-2 bg-white text-gray-800 rounded-lg shadow-xl ring-1 ring-black/5 w-48 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 mt-2 bg-white text-gray-800 rounded-lg shadow-xl ring-1 ring-black/5 w-48 overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-100">
                   <button onClick={() => { setShowMenu(false); handleLeaveCommunity() }} className="w-full px-4 py-3 text-left text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors">
                     <LogOut size={18} /> <span className="font-medium">Leave Community</span>
                   </button>
@@ -291,9 +429,7 @@ export default function CommunityDetailPage({ params }) {
 
       <div className="max-w-4xl mx-auto p-4 flex-1 w-full pt-[100px] sm:pt-[110px]">
         
-        {/* 🆕 CONTENT LOADING LOGIC */}
         {postsLoading ? (
-          // SKELETON LOADER (While fetching posts)
           <div className="space-y-4 animate-pulse">
             {[1, 2, 3].map(i => (
               <div key={i} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
@@ -310,7 +446,6 @@ export default function CommunityDetailPage({ params }) {
             ))}
           </div>
         ) : activeTab !== 'members' ? (
-          // POSTS CONTENT
           <div className="space-y-4">
             {!posts?.length ? (
               <div className="text-center py-12 bg-white rounded-lg border border-gray-100">
@@ -320,7 +455,6 @@ export default function CommunityDetailPage({ params }) {
             ) : (
               posts.map(post => (
                 <div key={post._id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                  {/* Post Header */}
                   <div className="flex items-start gap-3 mb-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
                       {post.authorName?.charAt(0).toUpperCase()}
@@ -341,7 +475,7 @@ export default function CommunityDetailPage({ params }) {
                   </div>
                   {post.title && <h3 className="font-bold text-gray-900 text-lg mb-2">{post.title}</h3>}
                   <p className="text-gray-700 whitespace-pre-wrap mb-2">{post.content}</p>
-                  {post.embedUrl && getEmbedPreview(post.embedUrl, post.embedType)}
+                  {(post.imageUrl || post.embedUrl) && getEmbedPreview(post)}
                   <div className="flex items-center gap-4 mt-4 pt-3 border-t">
                     <Link href={`/communities/post/${post._id}`} className="flex items-center gap-1 text-gray-600 hover:text-blue-600 text-sm">
                       <MessageSquare size={16} /> <span>{post.commentCount || 0} comments</span>
@@ -353,7 +487,6 @@ export default function CommunityDetailPage({ params }) {
             )}
           </div>
         ) : (
-          // MEMBERS CONTENT
           <div className="space-y-3">
             {!members?.length ? (
               <div className="text-center py-12 bg-white rounded-lg">
@@ -381,6 +514,13 @@ export default function CommunityDetailPage({ params }) {
           </div>
         )}
       </div>
+
+      {showMenu && (
+        <div 
+          className="fixed inset-0 z-30" 
+          onClick={() => setShowMenu(false)}
+        />
+      )}
 
       {showPostModal && <CreatePostModal onClose={() => setShowPostModal(false)} onSubmit={handleCreatePost} />}
     </div>

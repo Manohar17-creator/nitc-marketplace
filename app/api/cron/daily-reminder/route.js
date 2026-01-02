@@ -15,7 +15,7 @@ export async function GET(request) {
     // 2. Send the Broadcast
     // This sends to EVERYONE subscribed to your notifications
     await broadcastNotification({
-      title: "Good Morning! ☀️",
+      title: "Good Evening! 🌙",
       message: "Don't forget to mark your attendance today.",
       type: "info", 
       link: "/attendance" // Clicking notification opens Attendance page
