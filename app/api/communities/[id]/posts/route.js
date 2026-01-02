@@ -6,32 +6,61 @@ import { ObjectId } from 'mongodb'
 // GET - Fetch community posts
 export async function GET(request, context) {
   try {
-    // In Next.js 15, params must be awaited
+    // 1. Await params for Next.js 15 compatibility
     const params = await context.params
     const id = params.id
     
     const { searchParams } = new URL(request.url)
-    const type = searchParams.get('type') // feed, job, showcase
+    const type = searchParams.get('type')
 
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
-    let query = { communityId: new ObjectId(id) }
-    if (type && type !== 'all') {
-      query.type = type
+    // 2. Build the initial match filter
+    let matchStage = { communityId: new ObjectId(id) }
+    if (type && type !== 'all' && type !== 'feed') {
+      matchStage.type = type
     }
 
-    const posts = await db
-      .collection('community_posts')
-      .find(query)
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray()
+    // 3. Use Aggregation to pull the LATEST profile pictures
+    const posts = await db.collection('community_posts').aggregate([
+      { $match: matchStage },
+      {
+        // Join with the users collection to get fresh profile data
+        $lookup: {
+          from: 'users',
+          localField: 'authorId',
+          foreignField: '_id',
+          as: 'authorInfo'
+        }
+      },
+      { $unwind: { path: '$authorInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          content: 1,
+          imageUrls: 1,
+          embedUrl: 1,
+          embedType: 1,
+          type: 1,
+          authorId: 1,
+          communityId: 1,
+          commentCount: 1,
+          createdAt: 1,
+          // ✅ Dynamically fetch the latest name and picture from the User document
+          authorName: { $ifNull: ['$authorInfo.name', '$authorName'] },
+          authorImage: '$authorInfo.picture' 
+        }
+      },
+      { $sort: { createdAt: -1 } },
+      { $limit: 50 }
+    ]).toArray()
 
     return NextResponse.json({ posts })
 
   } catch (error) {
-    console.error('Get posts error:', error)
+    console.error('Get posts aggregation error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch posts' },
       { status: 500 }
@@ -63,7 +92,7 @@ export async function POST(request, context) {
     const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
 
     // 2. Rate Limiting
-    const COOLDOWN_MS = 60 * 1000;
+    const COOLDOWN_MS = 10 * 1000;
     const now = Date.now();
     const lastPosted = user.lastPostedAt ? new Date(user.lastPostedAt).getTime() : 0;
 
@@ -80,7 +109,7 @@ export async function POST(request, context) {
   authorId: new ObjectId(decoded.userId),
   authorName: user.name,
   authorEmail: user.email,
-  authorImage: user.image || null,
+  authorImage: user.picture || null,
   type,
   title: title || '',
   content,

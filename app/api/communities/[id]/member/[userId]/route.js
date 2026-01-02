@@ -11,29 +11,23 @@ export async function GET(request, context) {
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
-    // Get member info
+    // ✅ Fetch the full user document to get the latest picture
     const member = await db.collection('users').findOne({
       _id: new ObjectId(userId)
     })
 
     if (!member) {
-      return NextResponse.json(
-        { error: 'Member not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 })
     }
 
-    // Get member's posts based on type
     let query = {
       communityId: new ObjectId(id),
       authorId: new ObjectId(userId)
     }
 
     if (type === 'feed') {
-      // Feed includes feed and job posts, NOT portfolio
       query.type = { $in: ['feed', 'job'] }
     } else if (type === 'portfolio') {
-      // Only portfolio posts
       query.type = 'portfolio'
     }
 
@@ -46,16 +40,15 @@ export async function GET(request, context) {
     return NextResponse.json({
       member: {
         name: member.name,
-        email: member.email
+        email: member.email,
+        // ✅ ADDED: Return the Cloudinary picture URL
+        picture: member.picture || '' 
       },
       posts
     })
 
   } catch (error) {
     console.error('Get member portfolio error:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch member data' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch member data' }, { status: 500 })
   }
 }

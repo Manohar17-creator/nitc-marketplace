@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
-// GET - Fetch community members
+// GET - Fetch community members with profile pictures
 export async function GET(request, context) {
   try {
+    // In Next.js 15, params must be awaited
     const { id } = await context.params
 
     const client = await clientPromise
@@ -28,6 +29,8 @@ export async function GET(request, context) {
             userId: 1,
             name: '$userInfo.name',
             email: '$userInfo.email',
+            // ✅ ADDED: Include the profile picture URL
+            picture: '$userInfo.picture', 
             joinedAt: 1
           }
         },

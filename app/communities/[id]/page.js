@@ -442,66 +442,110 @@ export default function CommunityDetailPage({ params }) {
             ) : (
               posts.map(post => (
                 <div key={post._id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                      {post.authorName?.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/communities/${communityId}/member/${post.authorId}`} className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">
-                        {post.authorName}
-                      </Link>
-                      <div className="text-xs text-gray-500">{formatTime(post.createdAt)}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                       {post.type === 'job' && <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">💼 Job</span>}
-                       {post.type === 'portfolio' && <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">⭐ Portfolio</span>}
-                       {currentUserId === post.authorId?.toString() && (
-                          <button onClick={() => handleDeletePost(post._id)} className="text-red-600 hover:text-red-700 p-1.5 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
-                       )}
-                    </div>
-                  </div>
-                  {post.title && <h3 className="font-bold text-gray-900 text-lg mb-2">{post.title}</h3>}
-                  <p className="text-gray-700 whitespace-pre-wrap mb-2">{post.content}</p>
-                  
-                  {/* Updated Preview Function Call */}
-                  {getEmbedPreview(post)}
+  <div className="flex items-start gap-3 mb-3">
+    {/* ✅ UPDATED: Avatar with Profile Picture Support */}
+    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold overflow-hidden border border-gray-100 shadow-sm flex-shrink-0">
+      {post.authorImage ? (
+        <img 
+          src={post.authorImage} 
+          alt={post.authorName} 
+          className="w-full h-full object-cover" 
+        />
+      ) : (
+        post.authorName?.charAt(0).toUpperCase()
+      )}
+    </div>
 
-                  <div className="flex items-center gap-4 mt-4 pt-3 border-t">
-                    <Link href={`/communities/post/${post._id}`} className="flex items-center gap-1 text-gray-600 hover:text-blue-600 text-sm">
-                      <MessageSquare size={16} /> <span>{post.commentCount || 0} comments</span>
-                    </Link>
-                    {post.type === 'job' && <Link href={`/communities/post/${post._id}`} className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">I am Interested</Link>}
-                  </div>
-                </div>
+    <div className="flex-1 min-w-0">
+      <Link href={`/communities/${communityId}/member/${post.authorId}`} className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">
+        {post.authorName}
+      </Link>
+      <div className="text-xs text-gray-500">{formatTime(post.createdAt)}</div>
+    </div>
+
+    <div className="flex items-center gap-2">
+       {post.type === 'job' && <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">💼 Job</span>}
+       {post.type === 'portfolio' && <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">⭐ Portfolio</span>}
+       {currentUserId === post.authorId?.toString() && (
+          <button onClick={() => handleDeletePost(post._id)} className="text-red-600 hover:text-red-700 p-1.5 hover:bg-red-50 rounded transition-colors">
+            <Trash2 size={16} />
+          </button>
+       )}
+    </div>
+  </div>
+
+  {post.title && <h3 className="font-bold text-gray-900 text-lg mb-2">{post.title}</h3>}
+  <p className="text-gray-700 whitespace-pre-wrap mb-2">{post.content}</p>
+  
+  {/* Render Media Preview (Carousel) */}
+  {getEmbedPreview(post)}
+
+  <div className="flex items-center gap-4 mt-4 pt-3 border-t">
+    <Link href={`/communities/post/${post._id}`} className="flex items-center gap-1 text-gray-600 hover:text-blue-600 text-sm font-medium">
+      <MessageSquare size={16} /> <span>{post.commentCount || 0} comments</span>
+    </Link>
+    {post.type === 'job' && (
+      <Link 
+        href={`/communities/post/${post._id}`} 
+        className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 active:scale-95 transition-all"
+      >
+        I am Interested
+      </Link>
+    )}
+  </div>
+</div>
               ))
             )}
           </div>
         ) : (
           <div className="space-y-3">
-            {!members?.length ? (
-              <div className="text-center py-12 bg-white rounded-lg">
-                <UsersIcon size={48} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-600">No members yet</p>
-              </div>
+  {!members?.length ? (
+    <div className="text-center py-12 bg-white rounded-lg border border-gray-100">
+      <UsersIcon size={48} className="mx-auto text-gray-300 mb-4" />
+      <p className="text-gray-600 font-medium">No members yet</p>
+      <p className="text-gray-400 text-sm">Be the first to join this community!</p>
+    </div>
+  ) : (
+    members.map((member) => (
+      <div key={member._id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
+        <div className="flex items-center gap-4">
+          
+          {/* ✅ Avatar: Photo or Initial Fallback */}
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xl font-bold overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
+            {member.picture ? (
+              <img 
+                src={member.picture} 
+                alt={member.name} 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.parentElement.innerHTML = member.name?.charAt(0).toUpperCase() || 'U';
+                }}
+              />
             ) : (
-              members.map(member => (
-                <div key={member._id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
-                      {member.name?.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900">{member.name}</div>
-                      <div className="text-sm text-gray-600 truncate">{member.email}</div>
-                    </div>
-                    <Link href={`/communities/${communityId}/member/${member.userId}`} className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg text-sm font-medium hover:bg-blue-50">
-                      View Posts
-                    </Link>
-                  </div>
-                </div>
-              ))
+              // ✅ Fallback to one letter if no picture exists
+              <span>{member.name?.charAt(0).toUpperCase() || 'U'}</span>
             )}
           </div>
+          
+          {/* Member Info */}
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-gray-900 truncate">{member.name}</div>
+            <div className="text-xs text-gray-500 truncate">{member.email}</div>
+          </div>
+          
+          {/* Action Button */}
+          <Link 
+            href={`/communities/${communityId}/member/${member.userId}`} 
+            className="px-4 py-2 text-blue-600 border border-blue-600 rounded-xl text-sm font-bold hover:bg-blue-50 transition-all active:scale-95 whitespace-nowrap"
+          >
+            View Posts
+          </Link>
+        </div>
+      </div>
+    ))
+  )}
+</div>
         )}
       </div>
 

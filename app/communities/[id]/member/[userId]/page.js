@@ -70,27 +70,37 @@ export default function MemberPortfolioPage({ params }) {
   return (
     <div className="min-h-screen min-h-screen-mobile bg-gray-50 flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg flex-shrink-0">
-        <div className="max-w-4xl mx-auto">
-          <button 
-            onClick={() => router.back()}
-            className="flex items-center gap-2 mb-3 hover:opacity-80 active:scale-95 transition"
-          >
-            <ChevronLeft size={22} />
-            <span className="text-sm">Back</span>
-          </button>
-          
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-              {member.name?.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold">{member.name}</h1>
-              <p className="text-blue-100 text-sm">{member.email}</p>
-            </div>
-          </div>
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg flex-shrink-0 safe-top">
+    <div className="max-w-4xl mx-auto pt-2 sm:pt-4">
+      <button 
+        onClick={() => router.back()}
+        className="flex items-center gap-2 mb-4 hover:opacity-80 active:scale-95 transition"
+      >
+        <ChevronLeft size={22} />
+        <span className="text-sm font-medium">Back</span>
+      </button>
+      
+      <div className="flex items-center gap-5">
+        {/* ✅ UPDATED: Avatar with Profile Picture Support */}
+        <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center text-white text-3xl font-bold overflow-hidden border-2 border-white/30 shadow-sm">
+          {member.picture ? (
+            <img 
+              src={member.picture} 
+              alt={member.name} 
+              className="w-full h-full object-cover" 
+            />
+          ) : (
+            member.name?.charAt(0).toUpperCase()
+          )}
+        </div>
+        
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">{member.name}</h1>
+          <p className="text-blue-100 text-base">{member.email}</p>
         </div>
       </div>
+    </div>
+  </div>
 
       {/* Tabs */}
       <div className="bg-white border-b sticky top-[120px] z-10">
