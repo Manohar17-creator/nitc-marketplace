@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   User, Mail, Phone, MapPin, Edit, Trash2, Plus, 
-  LogOut, Package, MessageSquare, ChevronRight, Camera, X, Loader2 
+  LogOut, Package, MessageSquare, ChevronRight, Camera, X, Loader2, Trash 
 } from 'lucide-react'
 import Link from 'next/link'
 import { getUserData, getAuthToken, logout } from '@/lib/auth-client'
@@ -38,6 +38,7 @@ export default function ProfilePage() {
 
       const userData = getUserData()
       setUser(userData)
+      // Initialize edit data with current user data
       setEditData({
         name: userData.name || '',
         phone: userData.phone || '',
@@ -101,6 +102,22 @@ export default function ProfilePage() {
     }
   }
 
+  // ✅ New: Handle Removing Picture (Temporary in edit mode)
+  const handleRemovePicture = () => {
+    setEditData(prev => ({ ...prev, picture: '' }))
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // ✅ Fixed: Handle Cancel Edit (Reverts all changes)
+  const handleCancelEdit = () => {
+    setEditData({
+      name: user.name || '',
+      phone: user.phone || '',
+      picture: user.picture || ''
+    })
+    setEditMode(false)
+  }
+
   // Handle Saving Profile Changes
   const handleSaveProfile = async () => {
     setUpdating(true)
@@ -117,7 +134,6 @@ export default function ProfilePage() {
 
       const result = await response.json()
       if (response.ok) {
-        // Sync local storage and current state
         localStorage.setItem('user', JSON.stringify(result.user))
         setUser(result.user)
         setEditMode(false)
@@ -151,6 +167,14 @@ export default function ProfilePage() {
     }
   }
 
+  const getCategoryEmoji = (category) => {
+    const emojiMap = {
+      books: '📚', electronics: '💻', tickets: '🎫',
+      rides: '🚗', housing: '🏠', events: '🎉', misc: '🎁'
+    }
+    return emojiMap[category] || '📦'
+  }
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -176,7 +200,6 @@ export default function ProfilePage() {
         {/* Profile Card Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
-            {/* Avatar with Camera Button */}
             <div className="relative">
               <div className="w-24 h-24 sm:w-32 sm:h-32 bg-blue-100 rounded-full overflow-hidden flex items-center justify-center text-blue-600 text-4xl font-bold border-4 border-white shadow-md">
                 {user.picture ? (
@@ -193,14 +216,10 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            {/* User Details */}
             <div className="flex-1 text-center sm:text-left">
               <div className="flex flex-col sm:flex-row items-center gap-3 mb-3">
                 <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
-                <button 
-                  onClick={() => setEditMode(true)} 
-                  className="text-blue-600 text-sm font-semibold flex items-center gap-1 hover:underline"
-                >
+                <button onClick={() => setEditMode(true)} className="text-blue-600 text-sm font-semibold flex items-center gap-1 hover:underline">
                   <Edit size={14} /> Edit Profile
                 </button>
               </div>
@@ -275,13 +294,12 @@ export default function ProfilePage() {
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in duration-200">
             <div className="p-6 border-b flex justify-between items-center">
               <h3 className="text-xl font-bold text-gray-900">Edit Profile</h3>
-              <button onClick={() => setEditMode(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={handleCancelEdit} className="text-gray-400 hover:text-gray-600 transition-colors">
                 <X size={24} />
               </button>
             </div>
             
             <div className="p-6 space-y-5">
-              {/* Image Editor Container */}
               <div className="flex flex-col items-center gap-3">
                 <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-blue-50 bg-gray-100 shadow-inner">
                   {updating && (
@@ -289,11 +307,18 @@ export default function ProfilePage() {
                       <Loader2 className="animate-spin text-blue-600" />
                     </div>
                   )}
-                  <img 
-                    src={editData.picture || user.picture || 'https://via.placeholder.com/150'} 
-                    className="w-full h-full object-cover" 
-                    alt="Preview"
-                  />
+                  {/* Show current edit state picture or fallback initial */}
+                  {editData.picture ? (
+                    <img 
+                      src={editData.picture} 
+                      className="w-full h-full object-cover" 
+                      alt="Preview"
+                    />
+                  ) : (
+                    <div className="text-blue-600 text-3xl font-bold">
+                       {user.name?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
                 <input 
                   ref={fileInputRef} 
@@ -302,12 +327,23 @@ export default function ProfilePage() {
                   onChange={handleImageUpload} 
                   className="hidden" 
                 />
-                <button 
-                  onClick={() => fileInputRef.current.click()} 
-                  className="text-sm font-bold text-blue-600 hover:underline active:opacity-70"
-                >
-                  Change Profile Photo
-                </button>
+                
+                <div className="flex gap-4">
+                  <button 
+                    onClick={() => fileInputRef.current.click()} 
+                    className="text-sm font-bold text-blue-600 hover:underline"
+                  >
+                    Change Photo
+                  </button>
+                  {editData.picture && (
+                    <button 
+                      onClick={handleRemovePicture} 
+                      className="text-sm font-bold text-red-500 hover:underline flex items-center gap-1"
+                    >
+                      <Trash size={14} /> Remove
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Form Fields */}
@@ -343,7 +379,7 @@ export default function ProfilePage() {
                   {updating ? <Loader2 className="animate-spin" /> : 'Update Profile Details'}
                 </button>
                 <button 
-                  onClick={() => setEditMode(false)}
+                  onClick={handleCancelEdit}
                   className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 font-medium"
                 >
                   Cancel
