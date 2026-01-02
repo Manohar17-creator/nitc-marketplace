@@ -5,7 +5,10 @@ import { MapPin, Calendar as CalIcon, Plus, Flag, Trash2, Heart, Search, Calenda
 import { useRouter } from 'next/navigation'
 import AdCard from '@/components/AdCard'
 import Image from 'next/image'
+import { app } from '@/lib/firebase'
 import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
+import { Edit3 } from 'lucide-react'
+import { getMessaging, getToken } from 'firebase/messaging'
 
 // Helper for "Read More"
 function EventDescription({ text }) {
@@ -22,6 +25,7 @@ function EventDescription({ text }) {
 }
 
 // Full-screen Image Modal
+// Full-screen Image Modal (FIXED for laptops/desktop)
 function ImageModal({ imageUrl, onClose, title }) {
   useEffect(() => {
     // Prevent body scroll when modal is open
@@ -33,25 +37,38 @@ function ImageModal({ imageUrl, onClose, title }) {
 
   return (
     <div 
-      className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+      // Added safe-area-inset handling for mobile browsers with bottom bars
+      className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 pb-[env(safe-area-inset-bottom,1rem)]"
       onClick={onClose}
     >
       <button 
         onClick={onClose}
-        className="absolute top-4 right-4 text-white bg-black/50 p-2 rounded-full hover:bg-black/70 transition-colors z-10"
+        // Increased z-index to ensure it's always on top
+        className="absolute top-4 right-4 text-white bg-black/50 p-2 rounded-full hover:bg-black/70 transition-colors z-20"
       >
         <X size={24} />
       </button>
       
-      <div className="relative max-w-4xl max-h-[90vh] w-full">
+      {/* FIXED CONTAINER:
+         1. Removed 'max-w-4xl max-h-[90vh] w-full'.
+         2. Added flex centering so the container shrink-wraps the image.
+         3. Added onClick stopPropagation here.
+      */}
+      <div 
+        className="relative flex items-center justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
         <img 
           src={imageUrl} 
           alt={title}
-          className="w-full h-full object-contain rounded-lg"
-          onClick={(e) => e.stopPropagation()}
+          // FIXED IMAGE STYLES:
+          // 1. Removed 'w-full h-full'.
+          // 2. Added max-w and max-h calc(). This constrains the image to the viewport size
+          //    minus the 2rem (p-4) padding of the parent, ensuring it never overflows.
+          className="object-contain rounded-lg max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)]"
         />
         {title && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 rounded-b-lg">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 rounded-b-lg z-10">
             <p className="text-white font-semibold text-center">{title}</p>
           </div>
         )}
@@ -67,6 +84,10 @@ export default function EventsPage() {
   const [isSearchVisible, setIsSearchVisible] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedImage, setSelectedImage] = useState(null)
+  const handleEdit = (event) => {
+  // Option 1: Navigate to the create page with the event ID to reuse the form
+  router.push(`/events/create?edit=${event._id}`)
+}
   const router = useRouter()
 
   const CACHE_KEY = 'events_feed_cache'
@@ -329,11 +350,27 @@ export default function EventsPage() {
                   
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-2">
-                      <h2 className="text-lg font-bold text-gray-900 leading-tight">{event.title}</h2>
-                      {(isOwner || isAdmin) && (
-                        <button onClick={() => handleDelete(event._id)} className="text-red-400 p-1 hover:bg-red-50 rounded-full"><Trash2 size={18} /></button>
-                      )}
-                    </div>
+  <h2 className="text-lg font-bold text-gray-900 leading-tight">{event.title}</h2>
+  <div className="flex gap-1">
+    {/* ✅ ONLY SHOW IF OWNER OR ADMIN */}
+    {(isOwner || isAdmin) && (
+      <>
+        <button 
+          onClick={() => handleEdit(event)} 
+          className="text-blue-500 p-1.5 hover:bg-blue-50 rounded-full transition-colors"
+        >
+          <Edit3 size={18} />
+        </button>
+        <button 
+          onClick={() => handleDelete(event._id)} 
+          className="text-red-400 p-1.5 hover:bg-red-50 rounded-full transition-colors"
+        >
+          <Trash2 size={18} />
+        </button>
+      </>
+    )}
+  </div>
+</div>
 
                     <div className="flex flex-col gap-2 mb-3">
                       <div className="flex items-center gap-2 text-sm text-gray-600">

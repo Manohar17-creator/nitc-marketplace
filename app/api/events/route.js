@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
+import { getMessaging } from 'firebase-admin/messaging'
 
 // GET: Fetch Events + Mix in Ads
 export async function GET(request) {
@@ -72,31 +73,24 @@ export async function POST(request) {
     const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    // 1. Rate Limiting
-    const COOLDOWN_MS = 60 * 1000;
-    const now = Date.now();
-    const lastActionTime = user.lastPostedAt ? new Date(user.lastPostedAt).getTime() : 0;
-
-    if (now - lastActionTime < COOLDOWN_MS) {
-      return NextResponse.json({ error: `Please wait before creating event.` }, { status: 429 });
+    // 1. Rate Limiting (Cooldown)
+    const COOLDOWN_MS = 30 * 1000;
+    const lastAction = user.lastPostedAt ? new Date(user.lastPostedAt).getTime() : 0;
+    if (Date.now() - lastAction < COOLDOWN_MS) {
+      return NextResponse.json({ error: 'Please wait a moment' }, { status: 429 });
     }
 
     const data = await request.json()
     const { title, description, venue, eventDate, image } = data
 
-    if (!title || !eventDate || !venue) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-
+    // 2. Create Event Document
     const dateObj = new Date(eventDate)
-    const expiryObj = new Date(dateObj)
-    expiryObj.setDate(expiryObj.getDate() + 1)
+    const expiryObj = new Date(dateObj); expiryObj.setDate(expiryObj.getDate() + 1);
 
-    // 2. Create Event
     const newEvent = {
-      title,
-      description,
-      venue,
+      title: String(title).trim(),
+      description: description || '',
+      venue: String(venue).trim(),
       image: image || null,
       eventDate: dateObj,
       expiryDate: expiryObj, 
@@ -108,36 +102,82 @@ export async function POST(request) {
     }
 
     const result = await db.collection('events').insertOne(newEvent)
-    
-    await db.collection('users').updateOne(
-      { _id: user._id }, 
-      { $set: { lastPostedAt: new Date() } }
-    )
+    await db.collection('users').updateOne({ _id: user._id }, { $set: { lastPostedAt: new Date() } })
 
-    // 3. ✅ NOTIFICATION LOGIC: Notify All Users (Campus Wide Event)
-    // Note: If you have >10k users, consider a "Global Notification" logic instead of loop
-    const allUsers = await db.collection('users').find({}, { projection: { _id: 1 } }).toArray()
-    
-    if (allUsers.length > 0) {
-      const notifications = allUsers.map(u => ({
-        userId: u._id,
-        type: 'event', // Matches frontend icon
-        title: '📅 New Campus Event',
-        message: `${title} at ${venue}`,
-        link: `/events`, // Or specific event link
-        resourceId: result.insertedId, // Store ID to check if deleted later
-        resourceType: 'event',
-        read: false,
-        createdAt: new Date()
-      }))
+    // 3. ✅ MOBILE NOTIFICATION LOGIC (FCM)
+    (async () => {
+      try {
+        const allUsers = await db.collection('users')
+          .find({ fcmToken: { $exists: true, $ne: null }, _id: { $ne: user._id } })
+          .project({ fcmToken: 1 })
+          .limit(500)
+          .toArray()
 
-      await db.collection('notifications').insertMany(notifications)
-    }
+        if (allUsers.length > 0) {
+          const tokens = [...new Set(allUsers.map(u => u.fcmToken))]
+          const messaging = getMessaging()
+          
+          await messaging.sendEachForMulticast({
+            tokens,
+            notification: { 
+              title: `📅 New Event: ${String(title).trim()}`, 
+              body: `Happening at ${venue} on ${dateObj.toLocaleDateString()}` 
+            },
+            data: { url: '/events' },
+            android: { priority: 'high' }
+          })
+        }
+      } catch (err) { console.error("FCM Error:", err) }
+    })()
 
-    return NextResponse.json({ success: true, message: 'Event created!' })
+    return NextResponse.json({ success: true, eventId: result.insertedId })
 
   } catch (error) {
-    console.error('Create event error:', error)
-    return NextResponse.json({ error: 'Failed to create event' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+export async function PUT(request, context) {
+  try {
+    const { id } = await context.params
+    const token = request.headers.get('authorization')?.split(' ')[1]
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const decoded = verifyToken(token)
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+
+    const data = await request.json()
+    const client = await clientPromise
+    const db = client.db('nitc-marketplace')
+
+    const event = await db.collection('events').findOne({ _id: new ObjectId(id) })
+    if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+
+    // Permission Check: Organizer or Admin
+    const isOwner = event.organizer.id.toString() === decoded.userId
+    const isAdmin = decoded.email === 'kandula_b220941ec@nitc.ac.in'
+    if (!isOwner && !isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+
+    const dateObj = new Date(data.eventDate)
+    const expiryObj = new Date(dateObj); expiryObj.setDate(expiryObj.getDate() + 1)
+
+    await db.collection('events').updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          title: data.title,
+          description: data.description,
+          venue: data.venue,
+          image: data.image || event.image,
+          eventDate: dateObj,
+          expiryDate: expiryObj,
+          updatedAt: new Date()
+        }
+      }
+    )
+
+    return NextResponse.json({ message: 'Event updated successfully' })
+  } catch (error) {
+    return NextResponse.json({ error: 'Update failed' }, { status: 500 })
   }
 }

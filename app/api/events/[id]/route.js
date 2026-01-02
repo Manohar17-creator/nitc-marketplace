@@ -3,48 +3,37 @@ import clientPromise from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
-// DELETE: Delete an event
-export async function DELETE(request, context) {
+// --- 1. GET: Fetch a single event (Required for Pre-filling Edit Form) ---
+export async function GET(request, context) {
   try {
-    // ✅ FIX: Await params before using them
     const params = await context.params
     const id = params.id
-    
-    const token = request.headers.get('authorization')?.split(' ')[1]
-    const decoded = verifyToken(token)
 
-    if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
+    }
 
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
 
-    const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
-    const event = await db.collection('events').findOne({ _id: new ObjectId(id) })
+    const event = await db.collection('events').findOne({
+      _id: new ObjectId(id)
+    })
 
-    if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
-
-    // Check Permissions
-    const isAdmin = user?.email === 'kandula_b220941ec@nitc.ac.in' 
-    const isOwner = event.organizer.id.toString() === decoded.userId
-
-    if (!isOwner && !isAdmin) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    if (!event) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
-    await db.collection('events').deleteOne({ _id: new ObjectId(id) })
-
-    return NextResponse.json({ success: true, message: 'Event deleted' })
-
+    return NextResponse.json({ event })
   } catch (error) {
-    console.error('Delete error:', error)
-    return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
+    console.error('Fetch event error:', error)
+    return NextResponse.json({ error: 'Failed to fetch event' }, { status: 500 })
   }
 }
 
-// PUT: Edit an event
+// --- 2. PUT: Edit an event details ---
 export async function PUT(request, context) {
   try {
-    // ✅ FIX: Await params here too
     const params = await context.params
     const id = params.id
     
@@ -62,8 +51,12 @@ export async function PUT(request, context) {
     const event = await db.collection('events').findOne({ _id: new ObjectId(id) })
     if (!event) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    if (event.organizer.id.toString() !== decoded.userId) {
-      return NextResponse.json({ error: 'Only the organizer can edit this' }, { status: 403 })
+    // Permission Check: Organizer or Admin
+    const isOwner = event.organizer.id.toString() === decoded.userId
+    const isAdmin = decoded.email === 'kandula_b220941ec@nitc.ac.in'
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     }
 
     const updateData = {
@@ -71,7 +64,7 @@ export async function PUT(request, context) {
       description,
       venue,
       eventDate: new Date(eventDate),
-      image,
+      image: image || event.image, // Keep old image if new one isn't provided
       updatedAt: new Date()
     }
 
@@ -83,6 +76,42 @@ export async function PUT(request, context) {
     return NextResponse.json({ success: true, message: 'Event updated' })
 
   } catch (error) {
+    console.error('Update error:', error)
     return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+  }
+}
+
+// --- 3. DELETE: Remove an event ---
+export async function DELETE(request, context) {
+  try {
+    const params = await context.params
+    const id = params.id
+    
+    const token = request.headers.get('authorization')?.split(' ')[1]
+    const decoded = verifyToken(token)
+
+    if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const client = await clientPromise
+    const db = client.db('nitc-marketplace')
+
+    const event = await db.collection('events').findOne({ _id: new ObjectId(id) })
+    if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+
+    // Check Permissions
+    const isAdmin = decoded.email === 'kandula_b220941ec@nitc.ac.in' 
+    const isOwner = event.organizer.id.toString() === decoded.userId
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    }
+
+    await db.collection('events').deleteOne({ _id: new ObjectId(id) })
+
+    return NextResponse.json({ success: true, message: 'Event deleted' })
+
+  } catch (error) {
+    console.error('Delete error:', error)
+    return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
   }
 }

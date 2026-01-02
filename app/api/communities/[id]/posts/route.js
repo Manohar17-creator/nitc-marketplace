@@ -72,7 +72,7 @@ export async function POST(request, context) {
     }
 
     const data = await request.json()
-    const { type, title, content, embedUrl, embedType, imageUrl } = data
+    const { type, title, content, embedUrl, embedType, imageUrl, imageUrls } = data
 
     // 3. Create Post
     const newPost = {
@@ -87,6 +87,7 @@ export async function POST(request, context) {
   embedUrl: embedUrl || null,
   embedType: embedType || null,
   imageUrl: imageUrl || null, // ← Add this line for Cloudinary uploads
+  imageUrls: imageUrls || [], // ← Add this line for multiple images
   commentCount: 0,
   createdAt: new Date()
 }

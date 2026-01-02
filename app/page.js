@@ -5,8 +5,6 @@ import Link from 'next/link'
 import ListingCard from '@/components/ListingCard'
 import NotificationBell from '@/components/NotificationBell'
 import AdCard from '@/components/AdCard'
-// Removed AdSenseBanner import since we aren't using it anymore
-import { getMessaging, getToken } from 'firebase/messaging'
 import { app } from '@/lib/firebase'
 
 export default function HomePage() {
@@ -18,7 +16,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [isSearchVisible, setIsSearchVisible] = useState(false)
 
-  // 🆕 State for Install Prompt
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [isInstallVisible, setIsInstallVisible] = useState(false)
 
@@ -34,21 +31,16 @@ export default function HomePage() {
     { id: 'misc', name: 'Miscellaneous', icon: Tag, color: 'bg-gray-500' },
   ]
 
-  // 1. Listen for the 'beforeinstallprompt' event
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault()
       setDeferredPrompt(e)
       setIsInstallVisible(true)
     }
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    }
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
   }, [])
 
-  // 2. Handle Install Click
   const handleInstallClick = async () => {
     if (!deferredPrompt) return
     deferredPrompt.prompt()
@@ -57,13 +49,11 @@ export default function HomePage() {
     setIsInstallVisible(false)
   }
 
-  // Smart caching
-  const CACHE_DURATION = 2 * 60 * 1000 
+  // ✅ FIX: Reduce cache duration to 5 seconds to ensure freshness
+  const CACHE_DURATION = 5 * 1000 
   
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery)
-    }, 300) 
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300) 
     return () => clearTimeout(timer)
   }, [searchQuery])
 
@@ -74,16 +64,17 @@ export default function HomePage() {
   const loadData = async () => {
     const cacheKey = `listings_${selectedCategory}_${debouncedSearch}`
     const cached = getCachedData(cacheKey)
+    
     if (cached) {
       setListings(cached.listings)
       setAds(cached.ads || [])
       setLoading(false)
-      const age = Date.now() - cached.timestamp
-      if (age > 60 * 1000) {
-        fetchDataInBackground(cacheKey)
-      }
+      
+      // ✅ FIX: Always fetch in background to catch new posts immediately
+      fetchDataInBackground(cacheKey)
       return
     }
+    
     await fetchData(cacheKey)
   }
 
@@ -94,9 +85,11 @@ export default function HomePage() {
       if (selectedCategory !== 'all') params.append('category', selectedCategory)
       if (debouncedSearch) params.append('search', debouncedSearch)
 
+      // ✅ FIX: Use 'no-store' and timestamp to bust cache
+      const t = Date.now()
       const [listingsRes, adsRes] = await Promise.all([
-        fetch(`/api/listings?${params}`, { next: { revalidate: 60 } }),
-        fetch('/api/ads', { next: { revalidate: 300 } })
+        fetch(`/api/listings?${params}&t=${t}`, { cache: 'no-store' }),
+        fetch(`/api/ads?t=${t}`, { cache: 'no-store' })
       ])
 
       const [listingsData, adsData] = await Promise.all([
@@ -125,9 +118,11 @@ export default function HomePage() {
       if (selectedCategory !== 'all') params.append('category', selectedCategory)
       if (debouncedSearch) params.append('search', debouncedSearch)
 
+      // ✅ FIX: Use 'no-store' here too
+      const t = Date.now()
       const [listingsRes, adsRes] = await Promise.all([
-        fetch(`/api/listings?${params}`),
-        fetch('/api/ads')
+        fetch(`/api/listings?${params}&t=${t}`, { cache: 'no-store' }),
+        fetch(`/api/ads?t=${t}`, { cache: 'no-store' })
       ])
 
       const [listingsData, adsData] = await Promise.all([
@@ -135,13 +130,18 @@ export default function HomePage() {
         adsRes.json()
       ])
       
-      setListings(listingsData.listings || [])
-      setAds(adsData.ads || [])
-      setCachedData(cacheKey, { 
-        listings: listingsData.listings || [], 
-        ads: adsData.ads || [], 
-        timestamp: Date.now() 
-      })
+      const newListings = listingsData.listings || []
+      
+      // Only update state if data actually changed to prevent flickering
+      if (JSON.stringify(newListings) !== JSON.stringify(listings)) {
+        setListings(newListings)
+        setAds(adsData.ads || [])
+        setCachedData(cacheKey, { 
+          listings: newListings, 
+          ads: adsData.ads || [], 
+          timestamp: Date.now() 
+        })
+      }
     } catch (error) {
       console.error('Background fetch failed:', error)
     }
@@ -152,10 +152,8 @@ export default function HomePage() {
       const cached = localStorage.getItem(key)
       if (!cached) return null
       const data = JSON.parse(cached)
-      const age = Date.now() - data.timestamp
-      if (age < CACHE_DURATION) return data
-      localStorage.removeItem(key)
-      return null
+      // Allow using slightly older cache for instant render, but background fetch will update it
+      return data
     } catch {
       return null
     }
@@ -164,13 +162,9 @@ export default function HomePage() {
   const setCachedData = (key, data) => {
     try {
       localStorage.setItem(key, JSON.stringify(data))
-      const allKeys = Object.keys(localStorage).filter(k => k.startsWith('listings_'))
-      if (allKeys.length > 10) {
-        allKeys.slice(0, -10).forEach(k => localStorage.removeItem(k))
-      }
     } catch (error) {
-      const allKeys = Object.keys(localStorage).filter(k => k.startsWith('listings_'))
-      allKeys.forEach(k => localStorage.removeItem(k))
+      // If quota exceeded, clear old items
+      localStorage.clear()
     }
   }
 
@@ -189,7 +183,6 @@ export default function HomePage() {
     }
   }
 
-  // 🧹 SIMPLIFIED: Just return listings (removed ad mixing logic)
   const renderContent = () => {
     if (loading && listings.length === 0) {
       return (
@@ -231,17 +224,14 @@ export default function HomePage() {
     )
   }
 
-  // 🆕 Helper to find a random/first valid ad
   const topAd = useMemo(() => {
     if (ads.length === 0) return null
-    // You can just pick the first one, or filter for a specific "placement" type if you have that logic
     return ads[0] 
   }, [ads])
 
   return (
     <div className="bg-gray-50 min-h-screen">
       
-      {/* Fixed Header */}
       <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-[64px] sm:h-[72px] transition-all duration-300">
           {!isSearchVisible ? (
@@ -285,7 +275,6 @@ export default function HomePage() {
       <main className="pt-[72px] pb-24 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4">
           
-          {/* ANDROID INSTALL BANNER */}
           {isInstallVisible && (
             <div className="mt-4 mb-2 bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl p-4 text-white shadow-lg flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -294,34 +283,18 @@ export default function HomePage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-sm">Install Unyfy App</h3>
-                  <p className="text-xs text-gray-300">Add to Home Screen for faster access</p>
+                  <p className="text-xs text-gray-300">Add to Home Screen</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                 <button 
-                  onClick={() => setIsInstallVisible(false)}
-                  className="p-2 text-gray-400 hover:text-white"
-                >
-                  <X size={18} />
-                </button>
-                <button 
-                  onClick={handleInstallClick}
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors"
-                >
-                  Install
-                </button>
+                 <button onClick={() => setIsInstallVisible(false)} className="p-2 text-gray-400 hover:text-white"><X size={18} /></button>
+                <button onClick={handleInstallClick} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors">Install</button>
               </div>
             </div>
           )}
 
-          {/* 📢 ONE SINGLE AD (Only if exists) */}
-          {topAd && (
-             <div className="mt-4 mb-4">
-               <AdCard ad={topAd} />
-             </div>
-          )}
+          {topAd && <div className="mt-4 mb-4"><AdCard ad={topAd} /></div>}
 
-          {/* Post Lost/Found Button */}
           <div className="mt-4 mb-4">
             <Link
               href="/post-lost-found"
@@ -332,7 +305,6 @@ export default function HomePage() {
             </Link>
           </div>
           
-          {/* Categories */}
           <div className="mb-6">
             <h2 className="font-semibold text-gray-900 mb-4 text-base sm:text-lg">Categories</h2>
             <div className="flex gap-3 overflow-x-auto py-4 -my-4 px-1 scrollbar-hide snap-x snap-mandatory">
@@ -343,50 +315,32 @@ export default function HomePage() {
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`flex-shrink-0 snap-start flex flex-col items-center gap-2.5 p-4 rounded-xl transition-all min-w-[85px] border ${
-                      isSelected
-                        ? 'bg-blue-600 text-white shadow-lg scale-105 border-blue-600'
-                        : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border-transparent'
-                    }`}
+                    className={`flex-shrink-0 snap-start flex flex-col items-center gap-2.5 p-4 rounded-xl transition-all min-w-[85px] border ${isSelected ? 'bg-blue-600 text-white shadow-lg scale-105 border-blue-600' : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm border-transparent'}`}
                   >
                     <div className={`p-2.5 rounded-full ${isSelected ? 'bg-white/20' : cat.color}`}>
                       <Icon size={22} className="text-white" />
                     </div>
-                    <span className="text-xs sm:text-sm font-medium text-center leading-tight px-1">
-                      {cat.name}
-                    </span>
+                    <span className="text-xs sm:text-sm font-medium text-center leading-tight px-1">{cat.name}</span>
                   </button>
                 )
               })}
             </div>
           </div>
 
-          {/* Listings */}
           <div className="mb-6 mt-2">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-gray-900 text-base sm:text-lg">
                 {selectedCategory === 'all' ? 'All Listings' : categories.find(c => c.id === selectedCategory)?.name}
                 <span className="text-gray-500 font-normal ml-2">({listings?.length ?? 0})</span>
               </h2>
-              <button 
-                onClick={handleRefresh} 
-                disabled={loading} 
-                className="text-sm text-blue-600 font-medium active:scale-95 disabled:opacity-50"
-              >
-                ↻ Refresh
-              </button>
+              <button onClick={handleRefresh} disabled={loading} className="text-sm text-blue-600 font-medium active:scale-95 disabled:opacity-50">↻ Refresh</button>
             </div>
-
             {renderContent()}
           </div>
         </div>
 
-        {/* FAB */}
         <Link href="/post">
-          <button 
-            className="fixed right-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 rounded-full shadow-lg hover:shadow-xl hover:scale-110 z-40 transition-all active:scale-[0.98]"
-            style={{ bottom: 'calc(90px + env(safe-area-inset-bottom))' }}
-          >
+          <button className="fixed right-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-4 rounded-full shadow-lg hover:shadow-xl hover:scale-110 z-40 transition-all active:scale-[0.98]" style={{ bottom: 'calc(90px + env(safe-area-inset-bottom))' }}>
             <Plus size={24} className="sm:w-7 sm:h-7" />
           </button>
         </Link>

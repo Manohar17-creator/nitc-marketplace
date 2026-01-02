@@ -21,6 +21,7 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.546.0",
     "mongodb": "^6.20.0",
+    "net": "^1.0.2",
     "next": "^16.1.0",
     "next-auth": "^4.24.13",
     "next-cloudinary": "^6.16.0",
@@ -29,7 +30,8 @@
     "react-dom": "^19.2.3",
     "recharts": "^3.3.0",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "tls": "^0.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

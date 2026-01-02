@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Upload, X, ArrowLeft, Loader } from 'lucide-react'
 import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
-import { compressImage } from '@/lib/image-compression' // ✅ Use your library
+import { compressImage } from '@/lib/image-compression' 
 
 export default function PostListing() {
   const router = useRouter()
@@ -70,11 +70,11 @@ export default function PostListing() {
           throw new Error('Only image files are allowed')
         }
 
-        // ✅ COMPRESS IMAGE using your lib/image-compression
+        // ✅ COMPRESS IMAGE
         console.log('📦 Compressing image...')
         const compressedFile = await compressImage(file)
         
-        // ✅ FIX: Named variable 'uploadData' to avoid conflict with 'formData' state
+        // ✅ Prepare Upload Data
         const uploadData = new FormData()
         uploadData.append('file', compressedFile)
 
@@ -83,14 +83,13 @@ export default function PostListing() {
           body: uploadData
         })
 
-        if (response.ok) {
-    alert('Listing posted successfully! 🎉');
-    router.push('/');
-} else {
-    // This will now show "Please wait 60s" instead of "Something went wrong"
-    setError(data.error || 'Failed to create listing');
-}
+        // ✅ FIX 1: Check response properly. DO NOT REDIRECT HERE.
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Upload failed');
+        }
 
+        // Return the image URL to update the preview state
         const resData = await response.json()
         return {
           url: resData.url,
@@ -100,7 +99,7 @@ export default function PostListing() {
 
       const uploadedImages = await Promise.all(uploadPromises)
       
-      // Use functional updates to ensure state consistency
+      // Update state so images appear in the grid
       setImagePreviews(prev => [...prev, ...uploadedImages])
       setFormData(prev => ({
         ...prev,
@@ -146,11 +145,13 @@ export default function PostListing() {
         body: JSON.stringify(formData)
       })
 
+      const data = await response.json() // Parse JSON once
+
       if (response.ok) {
         alert('Listing posted successfully! 🎉')
         router.push('/')
       } else {
-        const data = await response.json()
+        // Handle the error (e.g. rate limit 429)
         setError(data.error || 'Failed to create listing')
       }
     } catch (err) {
@@ -249,11 +250,31 @@ export default function PostListing() {
                 </div>
               ))}
             </div>
+            
             {imagePreviews.length < 3 && (
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                <Upload className="text-gray-400 mb-1" />
-                <span className="text-sm text-gray-500">{uploadingImage ? 'Uploading...' : 'Upload Image'}</span>
-                <input type="file" className="hidden" accept="image/*" multiple onChange={handleImageUpload} disabled={uploadingImage} />
+              <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${uploadingImage ? 'opacity-75 cursor-not-allowed bg-gray-50' : ''}`}>
+                
+                {/* ✅ FIX 2: Uploading Symbol Logic */}
+                {uploadingImage ? (
+                  <>
+                    <Loader className="animate-spin text-blue-600 mb-2" size={24} />
+                    <span className="text-sm text-blue-600 font-medium">Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="text-gray-400 mb-1" />
+                    <span className="text-sm text-gray-500">Upload Image</span>
+                  </>
+                )}
+
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept="image/*" 
+                  multiple 
+                  onChange={handleImageUpload} 
+                  disabled={uploadingImage} 
+                />
               </label>
             )}
           </div>
@@ -261,9 +282,14 @@ export default function PostListing() {
           <button
             type="submit"
             disabled={loading || uploadingImage}
-            className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {loading ? 'Posting...' : 'Post Listing'}
+            {loading ? (
+                <>
+                    <Loader className="animate-spin" size={20} />
+                    Posting...
+                </>
+            ) : 'Post Listing'}
           </button>
         </form>
       </div>

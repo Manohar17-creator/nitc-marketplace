@@ -183,46 +183,39 @@ export default function ListingDetail({ params }) {
               </div>
 
               {/* Price or Lost/Found Info */}
-              {listing.category === 'lost-found' ? (
-                <div className={`border-l-4 p-5 sm:p-6 mb-5 sm:mb-6 rounded-r-lg ${
-                  listing.lostFoundType === 'lost'
-                    ? 'bg-red-50 border-red-500'
-                    : 'bg-green-50 border-green-500'
-                }`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-3xl">
-                      {listing.lostFoundType === 'lost' ? '😢' : '😊'}
-                    </span>
-                    <div>
-                      <div className={`text-sm font-medium ${
-                        listing.lostFoundType === 'lost' ? 'text-red-700' : 'text-green-700'
-                      }`}>
-                        {listing.lostFoundType === 'lost' ? 'LOST ITEM' : 'FOUND ITEM'}
-                      </div>
-                      <div className={`text-2xl sm:text-3xl font-bold ${
-                        listing.lostFoundType === 'lost' ? 'text-red-700' : 'text-green-700'
-                      }`}>
-                        {listing.lostFoundType === 'lost' ? 'Help Me Find It!' : 'Claim Your Item'}
-                      </div>
-                    </div>
-                  </div>
-                  {listing.reward > 0 && (
-                    <div className="mt-3 p-3 bg-orange-100 rounded-lg">
-                      <div className="text-sm text-orange-700 mb-1">Reward Offered</div>
-                      <div className="text-2xl font-bold text-orange-700">
-                        🎁 ₹{listing.reward.toLocaleString()}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="bg-green-50 border-l-4 border-green-500 pl-6 pr-5 py-5 sm:pl-7 sm:pr-6 sm:py-6 mb-5 sm:mb-6 rounded-r-lg">
-                  <div className="text-sm text-green-700 mb-2 font-medium">Price</div>
-                  <div className="text-4xl sm:text-5xl font-bold text-green-700">
-                    ₹{listing.price.toLocaleString()}
-                  </div>
-                </div>
-              )}
+              {/* Inside ListingDetail component, price/reward section */}
+{listing.category === 'lost-found' ? (
+  <div className={`border-l-4 p-5 sm:p-6 mb-5 sm:mb-6 rounded-r-lg ${
+    listing.lostFoundType === 'lost' ? 'bg-red-50 border-red-500' : 'bg-green-50 border-green-500'
+  }`}>
+    <div className="flex items-center gap-2 mb-2">
+      <span className="text-3xl">{listing.lostFoundType === 'lost' ? '😢' : '😊'}</span>
+      <div>
+        <div className={`text-sm font-medium ${listing.lostFoundType === 'lost' ? 'text-red-700' : 'text-green-700'}`}>
+          {listing.lostFoundType === 'lost' ? 'LOST ITEM' : 'FOUND ITEM'}
+        </div>
+        <div className={`text-2xl sm:text-3xl font-bold ${listing.lostFoundType === 'lost' ? 'text-red-700' : 'text-green-700'}`}>
+          {listing.lostFoundType === 'lost' ? 'Help Me Find It!' : 'Claim Your Item'}
+        </div>
+      </div>
+    </div>
+    
+    {/* ✅ FIX: Improved Reward Display Logic */}
+    {listing.category === 'lost-found' && Number(listing.reward) > 0 && (
+      <div className="mt-3 p-3 bg-orange-100 rounded-lg border border-orange-200">
+        <div className="text-xs text-orange-700 font-bold uppercase tracking-wider mb-1">Reward for Return</div>
+        <div className="text-2xl font-bold text-orange-700 flex items-center gap-2">
+          🎁 ₹{Number(listing.reward).toLocaleString('en-IN')}
+        </div>
+      </div>
+    )}
+  </div>
+) : (
+  <div className="bg-green-50 border-l-4 border-green-500 p-5 rounded-r-lg">
+    <div className="text-sm text-green-700 mb-1 font-medium">Price</div>
+    <div className="text-4xl font-bold text-green-700">₹{listing.price.toLocaleString('en-IN')}</div>
+  </div>
+)}
 
               {/* Last Seen Info */}
               {listing.category === 'lost-found' && (
@@ -268,40 +261,51 @@ export default function ListingDetail({ params }) {
               {/* Seller Information */}
               <div>
                 <h2 className="font-semibold text-gray-900 text-lg mb-4">Seller Information</h2>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-full">
-                      <User size={24} className="text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Seller</div>
-                      <div className="font-semibold text-gray-900">{listing.sellerName}</div>
-                    </div>
-                  </div>
+                {/* Replace the Seller Information section in your ListingDetail component */}
+<div className="bg-gray-50 rounded-lg p-4 space-y-4">
+  <div className="flex items-center gap-3">
+    <div className="p-2 bg-blue-100 rounded-full">
+      <User size={24} className="text-blue-600" />
+    </div>
+    <div>
+      <div className="text-sm text-gray-600">Seller</div>
+      <div className="font-semibold text-gray-900">{listing.sellerName}</div>
+    </div>
+  </div>
 
-                  <a 
-                    href={`tel:${listing.sellerPhone}`}
-                    className="flex items-center gap-3 p-3 bg-white rounded-lg hover:bg-blue-50 transition-colors border border-gray-200"
-                  >
-                    <div className="p-2 bg-blue-100 rounded-full">
-                      <Phone size={20} className="text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Phone</div>
-                      <div className="font-medium text-blue-600">{listing.sellerPhone}</div>
-                    </div>
-                  </a>
+  {/* ✅ Added a check to hide or show "Not Provided" if number is missing */}
+  {listing.sellerPhone ? (
+    <a 
+      href={`tel:${listing.sellerPhone}`}
+      className="flex items-center gap-3 p-3 bg-white rounded-lg hover:bg-blue-50 transition-colors border border-gray-200"
+    >
+      <div className="p-2 bg-blue-100 rounded-full">
+        <Phone size={20} className="text-blue-600" />
+      </div>
+      <div>
+        <div className="text-sm text-gray-600">Phone</div>
+        <div className="font-medium text-blue-600">{listing.sellerPhone}</div>
+      </div>
+    </a>
+  ) : (
+    <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 opacity-60">
+       <div className="p-2 bg-gray-100 rounded-full">
+        <Phone size={20} className="text-gray-400" />
+      </div>
+      <div className="text-sm text-gray-500 italic">Phone number not provided</div>
+    </div>
+  )}
 
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
-                    <div className="p-2 bg-gray-100 rounded-full">
-                      <Mail size={20} className="text-gray-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-gray-600">Email</div>
-                      <div className="font-medium text-gray-700 truncate">{listing.sellerEmail}</div>
-                    </div>
-                  </div>
-                </div>
+  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+    <div className="p-2 bg-gray-100 rounded-full">
+      <Mail size={20} className="text-gray-600" />
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="text-sm text-gray-600">Email</div>
+      <div className="font-medium text-gray-700 truncate">{listing.sellerEmail}</div>
+    </div>
+  </div>
+</div>
 
                 {/* Contact Button */}
                 <a

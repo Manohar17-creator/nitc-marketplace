@@ -8,10 +8,7 @@ export async function GET(request, context) {
     const { id } = await context.params
     
     if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: 'Invalid listing ID' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid listing ID' }, { status: 400 })
     }
 
     const client = await clientPromise
@@ -22,20 +19,20 @@ export async function GET(request, context) {
     })
 
     if (!listing) {
-      return NextResponse.json(
-        { error: 'Listing not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
+    }
+
+    // ✅ Ensure sellerPhone exists. If not found in listing, check user profile.
+    if (!listing.sellerPhone) {
+      const seller = await db.collection('users').findOne({ email: listing.sellerEmail })
+      listing.sellerPhone = seller?.phone || 'Not Provided'
     }
 
     return NextResponse.json({ listing })
 
   } catch (error) {
     console.error('Get listing error:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch listing' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch listing' }, { status: 500 })
   }
 }
 
@@ -102,68 +99,50 @@ export async function PUT(request, context) {
     const { id } = await context.params
     const token = request.headers.get('authorization')?.split(' ')[1]
 
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const decoded = verifyToken(token)
-    if (!decoded) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
-
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: 'Invalid listing ID' },
-        { status: 400 }
-      )
-    }
+    if (!decoded || !ObjectId.isValid(id)) return NextResponse.json({ error: 'Invalid Request' }, { status: 400 })
 
     const data = await request.json()
-    const { title, description, price, category, location, status } = data
+    // ✅ FIX: Extract Lost & Found specific fields from the request
+    const { 
+      title, description, price, category, location, status, 
+      sellerPhone, reward, lostFoundType, lastSeenLocation, lastSeenDate 
+    } = data
 
     const client = await clientPromise
     const db = client.db('nitc-marketplace')
+    const listing = await db.collection('listings').findOne({ _id: new ObjectId(id) })
 
-    const listing = await db.collection('listings').findOne({
-      _id: new ObjectId(id)
-    })
+    if (!listing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    if (!listing) {
-      return NextResponse.json(
-        { error: 'Listing not found' },
-        { status: 404 }
-      )
-    }
-
-    if (listing.seller && listing.seller.toString() !== decoded.userId) {
-      return NextResponse.json(
-        { error: 'You can only update your own listings' },
-        { status: 403 }
-      )
-    }
+    const isOwner = listing.sellerEmail === decoded.email || listing.seller?.toString() === decoded.userId
+    if (!isOwner) return NextResponse.json({ error: 'Access Denied' }, { status: 403 })
 
     await db.collection('listings').updateOne(
       { _id: new ObjectId(id) },
       {
         $set: {
-          title,
-          description,
-          price: Number(price),
+          title: title?.trim(),
+          description: description?.trim(),
+          price: Number(price) || 0,
           category,
           location,
           status,
+          sellerPhone: sellerPhone || listing.sellerPhone,
+          // ✅ FIX: Update Lost & Found specific fields
+          reward: category === 'lost-found' ? Number(reward) || 0 : 0,
+          lostFoundType: lostFoundType || listing.lostFoundType,
+          lastSeenLocation: lastSeenLocation || location,
+          lastSeenDate: lastSeenDate || listing.lastSeenDate,
           updatedAt: new Date()
         }
       }
     )
 
     return NextResponse.json({ message: 'Listing updated successfully' })
-
   } catch (error) {
-    console.error('Update listing error:', error)
-    return NextResponse.json(
-      { error: 'Failed to update listing' },
-      { status: 500 }
-    )
+    console.error('Update error:', error)
+    return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

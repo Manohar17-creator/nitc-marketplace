@@ -110,15 +110,17 @@ export async function POST(request) {
     const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    // Demo cooldown check (5 seconds)
     const lastPost = user.lastPostedAt ? new Date(user.lastPostedAt).getTime() : 0
     if (Date.now() - lastPost < 5000) {
       return NextResponse.json({ error: 'Please wait a moment' }, { status: 429 })
     }
 
     const data = await request.json()
-    // Destructure specifically for Lost & Found support
-    const { title, description, price, category, images, location, lostFoundType } = data
+    // ✅ FIX: Destructure all possible fields from the form
+    const { 
+      title, description, price, category, images, location, 
+      sellerPhone, lostFoundType, reward, lastSeenLocation, lastSeenDate 
+    } = data
 
     const newListing = {
       title: String(title).trim(),
@@ -128,14 +130,18 @@ export async function POST(request) {
       images: images || [],
       sellerEmail: user.email,
       sellerName: user.name,
+      sellerPhone: sellerPhone || user.phone || 'Not Provided', // ✅ Required for contact button
       location: location || 'NITC',
       status: 'active',
       createdAt: new Date(),
-    }
-
-    // Add Lost/Found specific fields
-    if (category === 'lost-found') {
-      newListing.lostFoundType = lostFoundType || 'lost'
+      
+      // ✅ ADDED: Conditional spread to include Lost & Found specific fields
+      ...(category === 'lost-found' && {
+        lostFoundType: lostFoundType || 'lost',
+        reward: Number(reward) || 0,
+        lastSeenLocation: lastSeenLocation || location,
+        lastSeenDate: lastSeenDate || null
+      })
     }
 
     const result = await db.collection('listings').insertOne(newListing)
@@ -146,21 +152,21 @@ export async function POST(request) {
       { $set: { lastPostedAt: new Date() } }
     )
 
-    // ✅ FIX: Clean string construction to avoid "not a function" error
+    // Notification Logic
     const cleanTitle = String(title).trim()
     let notifTitle = `🛍️ New Listing`
     let notifBody = `${cleanTitle}`
 
     if (category === 'lost-found') {
       notifTitle = lostFoundType === 'found' ? `✨ Item Found` : `🔍 Item Lost`
-      notifBody = `${cleanTitle} @ ${location || 'NITC'}`
+      notifBody = `${cleanTitle} @ ${lastSeenLocation || location || 'NITC'}`
     } else {
       notifTitle = `🛍️ New in ${category}`
       const fmtPrice = Number(price).toLocaleString('en-IN')
-      notifBody = cleanTitle + " - ₹" + fmtPrice // Manual concat to be safe
+      notifBody = cleanTitle + " - ₹" + fmtPrice
     }
 
-    // 3. Background Notification Task
+    // Background Notification Task
     (async () => {
       try {
         const allUsers = await db.collection('users')
@@ -177,7 +183,7 @@ export async function POST(request) {
             tokens,
             notification: { title: notifTitle, body: notifBody },
             data: { url: `/listing/${listingId.toString()}` },
-            android: { priority: 'high' }, // Crucial for Android delivery
+            android: { priority: 'high' },
             webpush: { headers: { Urgency: 'high' } }
           })
         }
@@ -189,7 +195,7 @@ export async function POST(request) {
     return NextResponse.json({ success: true, listingId })
 
   } catch (error) {
-    console.error('CRITICAL POST ERROR:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    console.error('POST ERROR:', error)
+    return NextResponse.json({ error: 'Server Error' }, { status: 500 })
   }
 }
