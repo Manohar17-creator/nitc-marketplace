@@ -1,26 +1,28 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth'; // Removed isAdmin import
+import { verifyToken } from '@/lib/auth';
 import { sendTargetedNotification, broadcastNotification } from '@/lib/notifications';
 
 export async function POST(request) {
   try {
-    // 1. Basic Auth Check (User must be logged in)
+    // 1. Basic Auth Check
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.split(' ')[1];
     
-    // If no token is provided, we still want to block the request
     const decoded = verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ error: 'Unauthorized - Please Log In' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Parse the request body
+    // 2. Parse Request Body
     const { title, message, type, userIds, link } = await request.json();
 
-    // 3. Logic Branching: Targeted vs Global
+    // 3. Identify Sender for Logs
+    const sender = decoded.email || decoded.name || decoded.userId || 'Unknown User';
+
+    // 4. Logic Branching: Targeted vs Global
     if (userIds && Array.isArray(userIds) && userIds.length > 0) {
       // 🎯 TARGETED MODE
-      // Sends to specific IDs provided in the array
+      // Ensure lib/notifications.js is updated to handle 'fcmTokens' as an array
       await sendTargetedNotification({ 
         userIds, 
         title, 
@@ -29,10 +31,10 @@ export async function POST(request) {
         link: link || '/notifications' 
       });
       
-      console.log(`🎯 Targeted notification sent by ${decoded.email || decoded.userId} to ${userIds.length} users.`);
+      console.log(`🎯 Targeted notification sent by ${sender} to ${userIds.length} users.`);
     } else {
       // 📢 BROADCAST MODE
-      // Sends to every active user in the system
+      // Sends to the 'all_users' Firebase topic and all DB user records
       await broadcastNotification({ 
         title, 
         message, 
@@ -40,7 +42,7 @@ export async function POST(request) {
         link: link || '/announcements' 
       });
       
-      console.log(`📢 Global broadcast triggered by user: ${decoded.email}`);
+      console.log(`📢 Global broadcast triggered by user: ${sender}`);
     }
 
     return NextResponse.json({ 
