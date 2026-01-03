@@ -3,7 +3,7 @@ import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
-// GET - Fetch calendar and contacts (Public)
+// GET - Fetch calendar, contacts, and documents (Public)
 export async function GET() {
   try {
     const db = await getDb()
@@ -13,10 +13,15 @@ export async function GET() {
       .find({ type: 'contact' })
       .sort({ createdAt: -1 })
       .toArray()
+    const documents = await db.collection('campus_resources')
+      .find({ type: 'document' })
+      .sort({ createdAt: -1 })
+      .toArray()
     
     return NextResponse.json({
       calendar,
-      contacts
+      contacts,
+      documents
     })
   } catch (error) {
     console.error('GET /api/campus-resources error:', error)
@@ -24,7 +29,7 @@ export async function GET() {
   }
 }
 
-// POST - Create/Update calendar or add contact (Admin only)
+// POST - Create/Update calendar, add contact, or add document (Admin only)
 export async function POST(request) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -39,7 +44,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    // ✅ FIX: Fetch user from database to get email
     const db = await getDb()
     const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
     
@@ -55,7 +59,7 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { type, imageUrl, title } = body
+    const { type, imageUrl, imageUrls, title } = body
 
     if (type === 'calendar') {
       // Replace existing calendar
@@ -71,7 +75,8 @@ export async function POST(request) {
         { upsert: true, returnDocument: 'after' }
       )
       return NextResponse.json({ success: true, calendar: result.value })
-    } else if (type === 'contact') {
+    } 
+    else if (type === 'contact') {
       // Add new contact sheet
       const contact = {
         type: 'contact',
@@ -85,6 +90,24 @@ export async function POST(request) {
         contact: { ...contact, _id: result.insertedId } 
       })
     }
+    else if (type === 'document') {
+      // Add new document with multiple images
+      if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+        return NextResponse.json({ error: 'imageUrls array is required' }, { status: 400 })
+      }
+
+      const document = {
+        type: 'document',
+        imageUrls,
+        title: title || 'Document',
+        createdAt: new Date()
+      }
+      const result = await db.collection('campus_resources').insertOne(document)
+      return NextResponse.json({ 
+        success: true, 
+        document: { ...document, _id: result.insertedId } 
+      })
+    }
 
     return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
   } catch (error) {
@@ -93,7 +116,7 @@ export async function POST(request) {
   }
 }
 
-// DELETE - Remove a contact sheet (Admin only)
+// DELETE - Remove a contact sheet or document (Admin only)
 export async function DELETE(request) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -108,7 +131,6 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    // ✅ FIX: Fetch user from database to get email
     const db = await getDb()
     const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
     

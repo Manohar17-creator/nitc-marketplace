@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react' // 👈 Import Suspense
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft,Phone, Trash2, Plus, Shield, Search, Ban, UserCheck, Bell, Send, Eye, MousePointer2, MousePointerClick, Calendar, Edit2, Clock, CalendarDays, MessageSquare} from 'lucide-react'
+import { ChevronLeft,X ,Phone, Trash2, Plus, Shield, Search, Ban, UserCheck, Bell, Send, Eye, MousePointer2, MousePointerClick, Calendar, Edit2, Clock, CalendarDays, MessageSquare} from 'lucide-react'
 import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 // 👇 1. Rename your main component to 'DashboardContent' (Internal use only)
@@ -28,6 +28,10 @@ function DashboardContent() {
 
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState(null)
+
+  // Add these with your other states
+const [selectedUserIds, setSelectedUserIds] = useState([]);
+const [isTargetedMode, setIsTargetedMode] = useState(false); // Toggle between Broadcast and Targeted
 
   const [calendar, setCalendar] = useState(null)
 const [contactSheets, setContactSheets] = useState([])
@@ -181,6 +185,47 @@ const [newContactTitle, setNewContactTitle] = useState('')
     } catch (err) { alert('Failed') }
   }
 
+  const handleSendNotification = async (e) => {
+  e.preventDefault();
+  
+  const recipientCount = isTargetedMode ? selectedUserIds.length : allUsers.length;
+  if (recipientCount === 0) return alert("No recipients selected!");
+  
+  if (!confirm(`Send this to ${recipientCount} user(s)?`)) return;
+
+  setSendingBroadcast(true);
+  try {
+    const token = getAuthToken();
+    // We'll use a more generic endpoint name
+    const res = await fetch('/api/admin/broadcast', { 
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      // If isTargetedMode is true, we send the array of IDs. 
+      // If false, we send null/empty to signify "All"
+      body: JSON.stringify({
+        ...broadcastForm,
+        userIds: isTargetedMode ? selectedUserIds : null 
+      })
+    });
+
+    if (res.ok) {
+      alert('Notification Sent Successfully! 🚀');
+      setBroadcastForm({ title: '', message: '', type: 'info' });
+      if (isTargetedMode) clearSelection();
+    } else {
+      alert('Failed to send notification');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Error sending notification');
+  } finally {
+    setSendingBroadcast(false);
+  }
+};
+
   const handleCalendarUpload = async (e) => {
   const file = e.target.files[0]
   if (!file) return
@@ -221,6 +266,19 @@ const [newContactTitle, setNewContactTitle] = useState('')
     setUploadingCalendar(false)
   }
 }
+
+const toggleUserSelection = (userId) => {
+  setSelectedUserIds(prev => 
+    prev.includes(userId) 
+      ? prev.filter(id => id !== userId) 
+      : [...prev, userId]
+  );
+};
+
+const clearSelection = () => {
+  setSelectedUserIds([]);
+  setIsTargetedMode(false);
+};
 
 const handleContactUpload = async (e) => {
   const file = e.target.files[0]
@@ -322,34 +380,43 @@ const handleDeleteContact = async (id) => {
   }
 
   const handleSendBroadcast = async (e) => {
-    e.preventDefault()
-    if (!confirm(`Send this to ALL ${allUsers.length} users?`)) return
+  e.preventDefault();
+  
+  const recipientCount = isTargetedMode ? selectedUserIds.length : allUsers.length;
+  if (recipientCount === 0) return alert("No recipients selected!");
+  
+  const confirmMsg = isTargetedMode 
+    ? `Send targeted message to ${recipientCount} user(s)?` 
+    : `Send global broadcast to ALL ${allUsers.length} users?`;
+    
+  if (!confirm(confirmMsg)) return;
 
-    setSendingBroadcast(true)
-    try {
-      const token = getAuthToken()
-      const res = await fetch('/api/admin/broadcast', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(broadcastForm)
+  setSendingBroadcast(true);
+  try {
+    const token = getAuthToken();
+    const res = await fetch('/api/admin/broadcast', { // Same route as before
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        ...broadcastForm,
+        userIds: isTargetedMode ? selectedUserIds : null // Backend logic handles the null
       })
+    });
 
-      if (res.ok) {
-        alert('Broadcast Sent Successfully! 🚀')
-        setBroadcastForm({ title: '', message: '', type: 'info' })
-      } else {
-        alert('Failed to send broadcast')
-      }
-    } catch (err) {
-      console.error(err)
-      alert('Error sending broadcast')
-    } finally {
-      setSendingBroadcast(false)
+    if (res.ok) {
+      alert('Sent successfully! 🚀');
+      setBroadcastForm({ title: '', message: '', type: 'info' });
+      if (isTargetedMode) clearSelection();
     }
+  } catch (err) {
+    alert('Failed to send');
+  } finally {
+    setSendingBroadcast(false);
   }
+};
 
 const startEditAd = (ad) => {
     setNewAd({
@@ -763,6 +830,15 @@ const handleSubmitAd = async (e) => {
               {filteredUsers.map(u => (
                 <div key={u._id} className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
+                    <input 
+      type="checkbox"
+      checked={selectedUserIds.includes(u._id)}
+      onChange={() => {
+        toggleUserSelection(u._id);
+        if (!selectedUserIds.includes(u._id)) setIsTargetedMode(true);
+      }}
+      className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+    />
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${u.status === 'banned' ? 'bg-gray-400' : 'bg-blue-500'}`}>
                       {u.name?.charAt(0).toUpperCase()}
                     </div>
@@ -774,6 +850,20 @@ const handleSubmitAd = async (e) => {
                       <p className="text-sm text-gray-500">{u.email}</p>
                     </div>
                   </div>
+
+                  <div className="flex gap-2">
+       {/* Button to quickly notify JUST this person */}
+       <button 
+       onClick={() => {
+         setSelectedUserIds([u._id]);
+         setIsTargetedMode(true);
+         switchTab('broadcast'); // Jump to broadcast tab to write message
+       }}
+       className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+       title="Send direct notification"
+     >
+       <Bell size={18} />
+     </button>
                   <button
                     onClick={() => handleUserBan(u._id, u.status)}
                     disabled={processingId === u._id}
@@ -781,6 +871,7 @@ const handleSubmitAd = async (e) => {
                   >
                     {u.status === 'banned' ? <UserCheck size={18} /> : <Ban size={18} />}
                   </button>
+                </div>
                 </div>
               ))}
             </div>
@@ -842,75 +933,113 @@ const handleSubmitAd = async (e) => {
 
         {/* TAB 5: BROADCAST */}
         {activeTab === 'broadcast' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-3 mb-4 text-gray-800">
-              <Bell className="text-blue-600" />
-              <h2 className="text-lg font-bold">Broadcast Message</h2>
-            </div>
-            
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-              <p className="text-sm text-yellow-800">
-                ⚠️ <strong>Warning:</strong> This message will be sent to <strong>{allUsers.length} users</strong> immediately.
-              </p>
-            </div>
+  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-in fade-in slide-in-from-bottom-2">
+    {/* 1. Header with Mode Toggle */}
+    <div className="flex justify-between items-center mb-4">
+      <div className="flex items-center gap-3 text-gray-800">
+        <Bell className={isTargetedMode ? "text-indigo-600" : "text-blue-600"} />
+        <h2 className="text-lg font-bold">
+          {isTargetedMode ? 'Targeted Notification' : 'Global Broadcast'}
+        </h2>
+      </div>
+      
+      {/* 2. Clear Selection Button */}
+      {selectedUserIds.length > 0 && (
+        <button 
+          onClick={clearSelection}
+          className="flex items-center gap-1 text-xs text-red-600 font-bold hover:bg-red-50 px-2 py-1 rounded-md transition-colors"
+        >
+          <X size={14} /> Clear Selection ({selectedUserIds.length})
+        </button>
+      )}
+    </div>
+    
+    {/* 3. Dynamic Warning/Status Box */}
+    <div className={`p-4 mb-6 rounded-lg border-l-4 transition-colors ${
+      isTargetedMode ? 'bg-indigo-50 border-indigo-400' : 'bg-yellow-50 border-yellow-400'
+    }`}>
+      <p className={`text-sm font-medium ${isTargetedMode ? 'text-indigo-800' : 'text-yellow-800'}`}>
+        {isTargetedMode ? (
+          <span>🎯 <strong>Targeted:</strong> This message will reach <strong>{selectedUserIds.length} specific user(s)</strong>.</span>
+        ) : (
+          <span>⚠️ <strong>Warning:</strong> This is a global broadcast to <strong>ALL {allUsers.length} users</strong>.</span>
+        )}
+      </p>
+    </div>
 
-            <form onSubmit={handleSendBroadcast} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Notification Title</label>
-                <input 
-                  className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="e.g., Server Maintenance"
-                  value={broadcastForm.title}
-                  onChange={e => setBroadcastForm({...broadcastForm, title: e.target.value})}
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Message Body</label>
-                <textarea 
-                  className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-32 resize-none"
-                  placeholder="Type your message here..."
-                  value={broadcastForm.message}
-                  onChange={e => setBroadcastForm({...broadcastForm, message: e.target.value})}
-                  required
-                />
-              </div>
+    {/* 4. Notification Form */}
+    <form onSubmit={handleSendNotification} className="space-y-4">
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-1">Notification Title</label>
+        <input 
+          className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          placeholder="e.g., Update on your Ad Approval"
+          value={broadcastForm.title}
+          onChange={e => setBroadcastForm({...broadcastForm, title: e.target.value})}
+          required
+        />
+      </div>
+      
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-1">Message Body</label>
+        <textarea 
+          className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-32 resize-none"
+          placeholder="Type your message here..."
+          value={broadcastForm.message}
+          onChange={e => setBroadcastForm({...broadcastForm, message: e.target.value})}
+          required
+        />
+      </div>
 
-              <div>
-  <label className="block text-sm font-semibold text-gray-700 mb-2">Notification Type</label>
-  <div className="flex gap-4">
-    {['info', 'success', 'warning', 'error'].map(t => (
-      <label 
-        key={t} 
-        className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border transition-all ${
-          broadcastForm.type === t 
-            ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 text-blue-700' // ✅ Added text-blue-700
-            : 'bg-gray-50 border-transparent hover:bg-gray-100 text-gray-700'   // ✅ Added text-gray-700
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">Notification Type</label>
+        <div className="flex gap-3 flex-wrap">
+          {['info', 'success', 'warning', 'error'].map(t => (
+            <label 
+              key={t} 
+              className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border transition-all ${
+                broadcastForm.type === t 
+                  ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 text-blue-700'
+                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-700'
+              }`}
+            >
+              <input 
+                type="radio" 
+                name="type" 
+                className="hidden" 
+                checked={broadcastForm.type === t}
+                onChange={() => setBroadcastForm({...broadcastForm, type: t})}
+              />
+              <span className="capitalize text-sm font-bold">{t}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* 5. Dynamic Submit Button */}
+      <button 
+        disabled={sendingBroadcast}
+        className={`w-full text-white font-bold py-3.5 rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
+          isTargetedMode 
+            ? 'bg-gradient-to-r from-indigo-600 to-purple-700' 
+            : 'bg-gradient-to-r from-blue-600 to-indigo-700'
         }`}
       >
-        <input 
-          type="radio" 
-          name="type" 
-          className="hidden" 
-          checked={broadcastForm.type === t}
-          onChange={() => setBroadcastForm({...broadcastForm, type: t})}
-        />
-        <span className="capitalize text-sm font-semibold">{t}</span>
-      </label>
-    ))}
-</div>
-</div>
-
-              <button 
-                disabled={sendingBroadcast}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold py-3.5 rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-              >
-                {sendingBroadcast ? 'Sending...' : <><Send size={18} /> Send Broadcast</>}
-              </button>
-            </form>
-          </div>
+        {sendingBroadcast ? (
+          <span className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            Processing...
+          </span>
+        ) : (
+          <>
+            <Send size={18} /> 
+            {isTargetedMode ? `Send to ${selectedUserIds.length} User(s)` : 'Send Broadcast to All'}
+          </>
         )}
+      </button>
+    </form>
+  </div>
+)}
 
         {/* TAB 6: ADS */}
         {/* TAB: ADS */}

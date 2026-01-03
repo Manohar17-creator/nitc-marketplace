@@ -17,9 +17,19 @@ export async function GET(request, context) {
     const db = await getDb()
     // 2. Build the initial match filter
     let matchStage = { communityId: new ObjectId(id) }
-    if (type && type !== 'all' && type !== 'feed') {
+    
+    // ✅ FIXED: Properly handle feed filtering
+    if (type === 'feed') {
+      // Feed should show only 'feed' and 'job' posts, NOT portfolio
+      matchStage.$or = [
+        { type: 'feed' },
+        { type: 'job' }
+      ]
+    } else if (type && type !== 'all') {
+      // For specific types (job, portfolio), show only that type
       matchStage.type = type
     }
+    // If type is 'all' or null, show everything (no additional filter)
 
     // 3. Use Aggregation to pull the LATEST profile pictures
     const posts = await db.collection('community_posts').aggregate([

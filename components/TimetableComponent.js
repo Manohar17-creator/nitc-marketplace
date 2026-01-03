@@ -241,20 +241,6 @@ export default function TimetableComponent() {
     }
   }
 
-  let pressTimer = null
-  const handleTouchStart = (day, periodId) => {
-    pressTimer = setTimeout(() => {
-      handleCellLongPress(day, periodId)
-    }, 500)
-  }
-
-  const handleTouchEnd = () => {
-    if (pressTimer) {
-      clearTimeout(pressTimer)
-      pressTimer = null
-    }
-  }
-
   return (
     <div className="bg-white rounded-lg shadow-md p-3 mb-4">
       <div className="flex items-center justify-between mb-3">
@@ -341,16 +327,16 @@ export default function TimetableComponent() {
       )}
 
       <div 
-        className="w-full overflow-x-scroll block -mx-3 px-3"
+        className="w-full -mx-3 px-3"
         style={{ 
-          display: 'block',
-          width: '100%',
-          overflowX: 'scroll',
+          overflowX: 'auto',
+          overflowY: 'hidden',
           WebkitOverflowScrolling: 'touch',
-          msOverflowStyle: '-ms-autohiding-scrollbar'
+          touchAction: 'pan-x',
+          willChange: 'scroll-position'
         }}
       >
-        <table className="border-collapse" style={{ minWidth: '900px' }}>
+        <table className="border-collapse" style={{ minWidth: '900px', width: 'max-content' }}>
           <thead>
             <tr>
               <th className="bg-gray-100 border-2 border-gray-300 p-1.5 text-[10px] sm:text-xs font-bold text-gray-700" style={{ minWidth: '60px' }}>
@@ -394,9 +380,6 @@ export default function TimetableComponent() {
                           handleCellLongPress(day, period.id)
                         }
                       }}
-                      onTouchStart={() => (isEditMode && !mergingMode) && handleTouchStart(day, period.id)}
-                      onTouchEnd={handleTouchEnd}
-                      onTouchMove={handleTouchEnd}
                       onDoubleClick={() => isEditMode && mergeInfo && unmergeCell(day, period.id)}
                       className={`border-2 border-gray-300 p-1.5 text-center font-semibold text-[10px] sm:text-xs transition-all ${
                         isEditMode && !isEditing ? 'cursor-pointer' : ''
@@ -440,7 +423,7 @@ export default function TimetableComponent() {
             ))}
           </tbody>
         </table>
-        </div>
+      </div>
 
       {showColorPicker && (
         <div 

@@ -1,36 +1,55 @@
-import { NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
-import { broadcastNotification } from '@/lib/notifications'
+import { NextResponse } from 'next/server';
+import { verifyToken } from '@/lib/auth'; // Removed isAdmin import
+import { sendTargetedNotification, broadcastNotification } from '@/lib/notifications';
 
 export async function POST(request) {
   try {
-    // 1. Auth Check
-    const authHeader = request.headers.get('authorization')
-    const token = authHeader?.split(' ')[1]
+    // 1. Basic Auth Check (User must be logged in)
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.split(' ')[1];
     
-    // verifyToken is synchronous (no 'await' needed usually, but safe either way)
-    const user = verifyToken(token)
-
-    // Check if user exists (Add '&& user.isAdmin' if you have an admin flag)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // If no token is provided, we still want to block the request
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Unauthorized - Please Log In' }, { status: 401 });
     }
 
-    const { title, message, type } = await request.json()
+    // 2. Parse the request body
+    const { title, message, type, userIds, link } = await request.json();
 
-    // 2. Broadcast (Handles BOTH Firebase & Database now)
-    // We don't need to manually insert into DB here anymore because 
-    // broadcastNotification() inside lib/notifications.js does it for us.
-    await broadcastNotification({ 
-      title, 
-      message, 
-      type 
-    })
+    // 3. Logic Branching: Targeted vs Global
+    if (userIds && Array.isArray(userIds) && userIds.length > 0) {
+      // 🎯 TARGETED MODE
+      // Sends to specific IDs provided in the array
+      await sendTargetedNotification({ 
+        userIds, 
+        title, 
+        message, 
+        type: type || 'info', 
+        link: link || '/notifications' 
+      });
+      
+      console.log(`🎯 Targeted notification sent by ${decoded.email || decoded.userId} to ${userIds.length} users.`);
+    } else {
+      // 📢 BROADCAST MODE
+      // Sends to every active user in the system
+      await broadcastNotification({ 
+        title, 
+        message, 
+        type: type || 'info', 
+        link: link || '/announcements' 
+      });
+      
+      console.log(`📢 Global broadcast triggered by user: ${decoded.email}`);
+    }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ 
+      success: true, 
+      mode: userIds?.length > 0 ? 'targeted' : 'broadcast' 
+    });
 
   } catch (error) {
-    console.error('Broadcast error:', error)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    console.error('Notification system error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

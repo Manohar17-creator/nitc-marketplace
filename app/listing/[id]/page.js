@@ -296,15 +296,20 @@ export default function ListingDetail({ params }) {
     </div>
   )}
 
-  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
-    <div className="p-2 bg-gray-100 rounded-full">
-      <Mail size={20} className="text-gray-600" />
+    <a 
+    href={`https://mail.google.com/mail/?view=cm&fs=1&to=${listing.sellerEmail}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="flex items-center gap-3 p-3 bg-white rounded-lg hover:bg-blue-50 transition-colors border border-gray-200"
+  >
+    <div className="p-2 bg-blue-100 rounded-full">
+      <Mail size={20} className="text-blue-600" />
     </div>
     <div className="flex-1 min-w-0">
-      <div className="text-sm text-gray-600">Email</div>
-      <div className="font-medium text-gray-700 truncate">{listing.sellerEmail}</div>
+      <div className="text-sm text-gray-600">Email via Gmail</div>
+      <div className="font-medium text-blue-600 truncate">{listing.sellerEmail}</div>
     </div>
-  </div>
+  </a>
 </div>
 
                 {/* Contact Button */}
