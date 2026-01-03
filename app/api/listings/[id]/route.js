@@ -109,7 +109,7 @@ export async function PUT(request, context) {
     } = data
 
     
-    const db = await getDb()    const listing = await db.collection('listings').findOne({ _id: new ObjectId(id) })
+    const db = await getDb();    const listing = await db.collection('listings').findOne({ _id: new ObjectId(id) });
 
     if (!listing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 

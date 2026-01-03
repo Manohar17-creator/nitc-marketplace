@@ -18,7 +18,7 @@ export async function POST(request) {
     }
 
     
-    const db = await getDb()    const userId = new ObjectId(decoded.userId)
+    const db = await getDb();    const userId = new ObjectId(decoded.userId)
 
     // 2. Hash the New Password
     const hashedPassword = await hashPassword(newPassword)

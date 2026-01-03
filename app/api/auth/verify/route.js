@@ -17,7 +17,7 @@ export async function POST(request) {
     }
 
     
-    const db = await getDb()    const userId = new ObjectId(decoded.userId)
+    const db = await getDb();    const userId = new ObjectId(decoded.userId)
 
     // 2. Mark User as Verified in DB
     const updateResult = await db.collection('users').findOneAndUpdate(
