@@ -7,8 +7,7 @@ async function setupIndexes() {
   
   try {
     await client.connect()
-    const db = client.db('nitc-marketplace')
-
+    const db = await getDb()
     console.log('Creating indexes...')
 
     // Users

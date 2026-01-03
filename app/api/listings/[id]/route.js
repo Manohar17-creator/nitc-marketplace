@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import { verifyToken } from '@/lib/auth'
 
@@ -11,9 +11,8 @@ export async function GET(request, context) {
       return NextResponse.json({ error: 'Invalid listing ID' }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const listing = await db.collection('listings').findOne({
       _id: new ObjectId(id)
     })
@@ -57,9 +56,8 @@ export async function DELETE(request, context) {
       )
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const listing = await db.collection('listings').findOne({
       _id: new ObjectId(id)
     })
@@ -110,9 +108,8 @@ export async function PUT(request, context) {
       sellerPhone, reward, lostFoundType, lastSeenLocation, lastSeenDate 
     } = data
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-    const listing = await db.collection('listings').findOne({ _id: new ObjectId(id) })
+    
+    const db = await getDb()    const listing = await db.collection('listings').findOne({ _id: new ObjectId(id) })
 
     if (!listing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 

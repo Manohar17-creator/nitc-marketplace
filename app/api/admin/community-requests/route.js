@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
@@ -17,9 +17,8 @@ export async function GET(request) {
     }
 
     // TODO: Add proper admin check
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const user = await db.collection('users').findOne({
       _id: new ObjectId(decoded.userId)
     })

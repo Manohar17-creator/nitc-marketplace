@@ -1,6 +1,6 @@
 // app/api/auth/google/callback/route.js
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { generateToken } from '@/lib/auth'
 
 export async function GET(request) {
@@ -45,9 +45,8 @@ export async function GET(request) {
       return NextResponse.redirect(new URL('/login?error=invalid_domain', request.url))
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     let user = await db.collection('users').findOne({ email: googleUser.email })
 
     if (!user) {

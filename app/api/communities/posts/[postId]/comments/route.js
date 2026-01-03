@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
@@ -7,9 +7,8 @@ import { ObjectId } from 'mongodb'
 export async function GET(request, context) {
   try {
     const { postId } = await context.params
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const comments = await db
       .collection('post_comments')
       .find({
@@ -39,9 +38,8 @@ export async function POST(request, context) {
     const decoded = verifyToken(token)
     if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 

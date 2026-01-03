@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { hashPassword, isNITCEmail } from '@/lib/auth' // Removed generateToken since we don't use it here anymore
 
 export async function POST(request) {
@@ -22,9 +22,8 @@ export async function POST(request) {
       )
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // 3. Check if user exists
     const existingUser = await db.collection('users').findOne({ email })
     if (existingUser) {

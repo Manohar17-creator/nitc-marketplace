@@ -1,6 +1,6 @@
 // app/api/auth/resend-verification/route.js
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { generateToken } from '@/lib/auth' // 👈 Don't forget this
 import { sendVerificationEmail } from '@/lib/email' // 👈 Import the helper
 
@@ -8,9 +8,8 @@ export async function POST(request) {
   try {
     const { email } = await request.json()
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // 1. Find User
     const user = await db.collection('users').findOne({ email })
     

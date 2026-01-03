@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import { verifyToken } from '@/lib/auth'
 
@@ -12,9 +12,8 @@ export async function GET(request, context) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const community = await db.collection('communities').findOne({ _id: new ObjectId(id) })
 
     if (!community) {
@@ -46,9 +45,8 @@ export async function DELETE(request, context) {
     }
 
     // B. Connect to DB & Fetch User Email
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const user = await db.collection('users').findOne(
       { _id: new ObjectId(decoded.userId) },
       { projection: { email: 1 } }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
 export async function POST(request, context) {
@@ -7,9 +7,8 @@ export async function POST(request, context) {
     // 1. Unwrap params (Next.js 15 requirement)
     const { userId, action } = await context.params
     
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // 2. Determine new status
     const newStatus = action === 'ban' ? 'banned' : 'active'
 

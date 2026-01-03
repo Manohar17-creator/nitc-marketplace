@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken, hashPassword } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
@@ -17,9 +17,8 @@ export async function POST(request) {
       )
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-    const userId = new ObjectId(decoded.userId)
+    
+    const db = await getDb()    const userId = new ObjectId(decoded.userId)
 
     // 2. Hash the New Password
     const hashedPassword = await hashPassword(newPassword)

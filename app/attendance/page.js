@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Calendar, Plus, X, TrendingUp } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { getAuthToken, isAuthenticated, fetchWithAuth } from '@/lib/auth-client'
+import TimetableComponent from '@/components/TimetableComponent'
 
 export default function AttendancePage() {
   const router = useRouter()
@@ -228,6 +229,9 @@ export default function AttendancePage() {
 
       <main className="pt-[72px] pb-nav-safe bg-gray-50 min-h-screen">
         <div className="max-w-6xl mx-auto px-4 mt-4 mb-4">
+
+          <TimetableComponent />
+          
           <div className="bg-white rounded-lg p-4 shadow-md mb-4 overflow-hidden">
             <label className="block text-gray-900 font-semibold mb-2">Mark Attendance for</label>
             <div className="relative rounded-lg bg-white">

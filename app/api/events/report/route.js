@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
@@ -10,9 +10,8 @@ export async function POST(request) {
     if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { eventId } = await request.json()
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
     
+    const db = await getDb()    
     const userId = new ObjectId(decoded.userId)
     const eventObjectId = new ObjectId(eventId)
 

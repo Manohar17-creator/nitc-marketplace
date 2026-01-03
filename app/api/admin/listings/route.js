@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
 // GET ALL LISTINGS (For Admin Panel)
 export async function GET() {
   try {
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
     
+    const db = await getDb()    
     const listings = await db.collection('listings')
       .find({})
       .sort({ createdAt: -1 })
@@ -28,9 +27,8 @@ export async function DELETE(request) {
 
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 })
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     await db.collection('listings').deleteOne({ _id: new ObjectId(id) })
 
     return NextResponse.json({ success: true })

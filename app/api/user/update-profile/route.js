@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
@@ -24,9 +24,8 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Name and phone are required' }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const result = await db.collection('users').findOneAndUpdate(
       { _id: new ObjectId(decoded.userId) },
       { 

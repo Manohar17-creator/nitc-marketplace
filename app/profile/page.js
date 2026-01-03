@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
-  User, Mail, Phone, MapPin, Edit, Trash2, Plus, 
+  User, Mail, Phone, MapPin, Edit, Trash2, Plus,  Calendar,
   LogOut, Package, MessageSquare, ChevronRight, Camera, X, Loader2, Trash 
 } from 'lucide-react'
 import Link from 'next/link'
@@ -250,6 +250,19 @@ export default function ProfilePage() {
                   <h3 className="font-semibold text-gray-900">Help & Support</h3>
                   <p className="text-xs text-gray-500">Contact our campus support team</p>
                </div>
+            </div>
+            <ChevronRight size={20} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
+          </div>
+        </Link>
+
+        <Link href="/campus-resources">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4 flex items-center justify-between hover:bg-gray-50 transition-colors group">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-100 p-2 rounded-lg text-blue-600"><Calendar size={20} /></div>
+              <div>
+                  <h3 className="font-semibold text-gray-900">Campus Resources</h3>
+                  <p className="text-xs text-gray-500">Academic calendar & important contacts</p>
+              </div>
             </div>
             <ChevronRight size={20} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
           </div>

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react' // 👈 Import Suspense
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft, Trash2, Plus, Shield, Search, Ban, UserCheck, Bell, Send, Eye, MousePointer2, MousePointerClick, Calendar, Edit2, Clock, CalendarDays, MessageSquare} from 'lucide-react'
+import { ChevronLeft,Phone, Trash2, Plus, Shield, Search, Ban, UserCheck, Bell, Send, Eye, MousePointer2, MousePointerClick, Calendar, Edit2, Clock, CalendarDays, MessageSquare} from 'lucide-react'
 import { getUserData, getAuthToken, isAuthenticated } from '@/lib/auth-client'
 
 // 👇 1. Rename your main component to 'DashboardContent' (Internal use only)
@@ -29,6 +29,11 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState(null)
 
+  const [calendar, setCalendar] = useState(null)
+const [contactSheets, setContactSheets] = useState([])
+const [uploadingCalendar, setUploadingCalendar] = useState(false)
+const [uploadingContact, setUploadingContact] = useState(false)
+const [newContactTitle, setNewContactTitle] = useState('')
   // Broadcast Form State
   const [broadcastForm, setBroadcastForm] = useState({ title: '', message: '', type: 'info' })
   const [sendingBroadcast, setSendingBroadcast] = useState(false)
@@ -94,6 +99,13 @@ function DashboardContent() {
         fetch('/api/admin/schedules', { headers }),
         fetch('/api/admin/messages', { headers })
       ])
+
+      const campusRes = await fetch('/api/campus-resources', { headers })
+      if (campusRes.ok) {
+        const data = await campusRes.json()
+        setCalendar(data.calendar)
+        setContactSheets(data.contacts || [])
+      }
 
       if (scheduleRes.ok) setSchedules((await scheduleRes.json()).schedules || []) // 👈 Set data
 
@@ -168,6 +180,110 @@ function DashboardContent() {
       }
     } catch (err) { alert('Failed') }
   }
+
+  const handleCalendarUpload = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  setUploadingCalendar(true)
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const uploadRes = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    })
+    const uploadData = await uploadRes.json()
+    
+    if (!uploadRes.ok) throw new Error(uploadData.error)
+
+    const token = getAuthToken()
+    const res = await fetch('/api/campus-resources', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        type: 'calendar',
+        imageUrl: uploadData.url
+      })
+    })
+
+    if (res.ok) {
+      alert('Calendar Updated! 📅')
+      fetchData()
+    }
+  } catch (err) {
+    alert('Upload failed: ' + err.message)
+  } finally {
+    setUploadingCalendar(false)
+  }
+}
+
+const handleContactUpload = async (e) => {
+  const file = e.target.files[0]
+  if (!file || !newContactTitle.trim()) {
+    alert('Please provide a title for the contact sheet')
+    return
+  }
+
+  setUploadingContact(true)
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const uploadRes = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    })
+    const uploadData = await uploadRes.json()
+    
+    if (!uploadRes.ok) throw new Error(uploadData.error)
+
+    const token = getAuthToken()
+    const res = await fetch('/api/campus-resources', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        type: 'contact',
+        imageUrl: uploadData.url,
+        title: newContactTitle
+      })
+    })
+
+    if (res.ok) {
+      alert('Contact Sheet Added! 📞')
+      setNewContactTitle('')
+      fetchData()
+    }
+  } catch (err) {
+    alert('Upload failed: ' + err.message)
+  } finally {
+    setUploadingContact(false)
+  }
+}
+
+const handleDeleteContact = async (id) => {
+  if (!confirm('Delete this contact sheet?')) return
+  
+  try {
+    const token = getAuthToken()
+    const res = await fetch(`/api/campus-resources?id=${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    if (res.ok) {
+      setContactSheets(prev => prev.filter(c => c._id !== id))
+    }
+  } catch (err) {
+    alert('Failed to delete')
+  }
+}
 
   const handleUserBan = async (userId, currentStatus) => {
     const action = currentStatus === 'banned' ? 'unban' : 'ban'
@@ -422,7 +538,7 @@ const handleSubmitAd = async (e) => {
         
         {/* Navigation Tabs */}
         <div className="flex gap-2 mb-6 bg-white p-1 rounded-lg shadow-sm border border-gray-200 overflow-x-auto scrollbar-hide">
-          {['requests', 'messages','manage', 'users', 'listings', 'events', 'ads', 'scheduler', 'broadcast'].map((tab) => (
+          {['requests', 'messages','manage', 'users', 'listings', 'events', 'ads','resources', 'scheduler', 'broadcast'].map((tab) => (
             <button
               key={tab}
               onClick={() => switchTab(tab)}
@@ -982,6 +1098,122 @@ const handleSubmitAd = async (e) => {
           </div>
         )}
 
+        {activeTab === 'resources' && (
+  <div className="space-y-6">
+    
+    {/* Academic Calendar Section */}
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-blue-50 px-5 py-4 border-b">
+        <h3 className="font-bold text-gray-900 flex items-center gap-2">
+          <Calendar className="text-blue-600" size={20} />
+          Academic Calendar
+        </h3>
+      </div>
+      
+      <div className="p-5">
+        {calendar && (
+          <div className="mb-4">
+            <img 
+              src={calendar.imageUrl} 
+              alt="Current Calendar" 
+              className="w-full max-w-md rounded-lg border border-gray-200 mb-3"
+            />
+            <p className="text-xs text-gray-500">Last updated: {new Date(calendar.updatedAt).toLocaleString()}</p>
+          </div>
+        )}
+        
+        <div className="flex gap-3 items-center">
+          <input 
+            type="file" 
+            accept="image/*" 
+            onChange={handleCalendarUpload}
+            className="hidden"
+            id="calendar-upload"
+            disabled={uploadingCalendar}
+          />
+          <label 
+            htmlFor="calendar-upload"
+            className={`cursor-pointer px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors ${uploadingCalendar ? 'opacity-50' : ''}`}
+          >
+            {uploadingCalendar ? 'Uploading...' : calendar ? 'Update Calendar' : 'Upload Calendar'}
+          </label>
+        </div>
+      </div>
+    </div>
+
+    {/* Important Contacts Section */}
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-green-50 px-5 py-4 border-b">
+        <h3 className="font-bold text-gray-900 flex items-center gap-2">
+          <Phone className="text-green-600" size={20} />
+          Important Contacts ({contactSheets.length})
+        </h3>
+      </div>
+      
+      <div className="p-5">
+        {/* Upload New Contact Form */}
+        <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+          <h4 className="font-semibold text-gray-700 mb-3">Add New Contact Sheet</h4>
+          <div className="space-y-3">
+            <input 
+              type="text"
+              placeholder="Title (e.g., Auto Drivers, Emergency Numbers)"
+              value={newContactTitle}
+              onChange={e => setNewContactTitle(e.target.value)}
+              className="w-full p-2 border rounded-lg"
+            />
+            <div className="flex gap-3">
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleContactUpload}
+                className="hidden"
+                id="contact-upload"
+                disabled={uploadingContact}
+              />
+              <label 
+                htmlFor="contact-upload"
+                className={`cursor-pointer px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors ${uploadingContact ? 'opacity-50' : ''}`}
+              >
+                {uploadingContact ? 'Uploading...' : 'Upload Contact Sheet'}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Existing Contacts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {contactSheets.length === 0 ? (
+            <p className="col-span-2 text-center py-8 text-gray-500">No contact sheets uploaded yet</p>
+          ) : (
+            contactSheets.map(contact => (
+              <div key={contact._id} className="border rounded-lg p-3 bg-gray-50 hover:shadow-sm transition-shadow">
+                <img 
+                  src={contact.imageUrl} 
+                  alt={contact.title}
+                  className="w-full h-40 object-cover rounded-lg mb-2"
+                />
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-gray-800 text-sm truncate flex-1">{contact.title}</p>
+                  <button
+                    onClick={() => handleDeleteContact(contact._id)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  {new Date(contact.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
         {/* TAB 7: SCHEDULER */}
         {activeTab === 'scheduler' && (
           <div>
@@ -1115,6 +1347,8 @@ const handleSubmitAd = async (e) => {
             </div>
           </div>
         )}
+
+        
       </div>
     </div>
   )

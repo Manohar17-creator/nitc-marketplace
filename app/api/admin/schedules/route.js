@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getDb } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
 export async function GET() {
-  const client = await clientPromise;
-  const db = client.db('nitc-marketplace');
+  ;
+  const db = await getDb();
   // Fetch active schedules
   const schedules = await db.collection('scheduled_notifications')
     .find({ isActive: true }).sort({ createdAt: -1 }).toArray();
@@ -14,8 +14,8 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const client = await clientPromise;
-    const db = client.db('nitc-marketplace');
+    ;
+    const db = await getDb();
 
     // Basic Validation
     if (!body.title || !body.daysOfWeek?.length || !body.endDate) {
@@ -42,8 +42,8 @@ export async function DELETE(request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
   
-  const client = await clientPromise;
-  const db = client.db('nitc-marketplace');
+  ;
+  const db = await getDb();
   
   await db.collection('scheduled_notifications').deleteOne({ _id: new ObjectId(id) });
   return NextResponse.json({ success: true });

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
@@ -22,9 +22,8 @@ export async function GET(request, { params }) {
 
     console.log('👤 Decoded token:', decoded)
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // Fetch subject details
     const subject = await db.collection('subjects').findOne({
       _id: new ObjectId(id),
@@ -91,9 +90,8 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // Delete subject
     const deleteResult = await db.collection('subjects').deleteOne({
       _id: new ObjectId(id),

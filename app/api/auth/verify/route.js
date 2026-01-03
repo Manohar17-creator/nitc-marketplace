@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken, generateToken } from '@/lib/auth' // 👈 Added generateToken
 import { ObjectId } from 'mongodb'
 
@@ -16,9 +16,8 @@ export async function POST(request) {
       )
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-    const userId = new ObjectId(decoded.userId)
+    
+    const db = await getDb()    const userId = new ObjectId(decoded.userId)
 
     // 2. Mark User as Verified in DB
     const updateResult = await db.collection('users').findOneAndUpdate(

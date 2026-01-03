@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getDb } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
 export async function GET() {
   try {
-    const client = await clientPromise;
-    const db = client.db('nitc-marketplace');
+    
+    const db = await getDb();
     
     // Fetch messages, newest first
     const messages = await db.collection('messages')
@@ -26,8 +26,8 @@ export async function DELETE(request) {
 
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-    const client = await clientPromise;
-    const db = client.db('nitc-marketplace');
+    ;
+    const db = await getDb();
 
     await db.collection('messages').deleteOne({ _id: new ObjectId(id) });
 

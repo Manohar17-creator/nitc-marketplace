@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 import { getMessaging } from 'firebase-admin/messaging'
@@ -7,9 +7,8 @@ import { getMessaging } from 'firebase-admin/messaging'
 // GET: Fetch Events + Mix in Ads
 export async function GET(request) {
   try {
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // 1. Fetch Active Ads for Events
     const ads = await db.collection('ads')
       .find({ 
@@ -67,9 +66,8 @@ export async function POST(request) {
     const decoded = verifyToken(token)
     if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
     
+    const db = await getDb()    
     const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
@@ -147,9 +145,8 @@ export async function PUT(request, context) {
     if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
 
     const data = await request.json()
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const event = await db.collection('events').findOne({ _id: new ObjectId(id) })
     if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
 

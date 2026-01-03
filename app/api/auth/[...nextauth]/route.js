@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyPassword } from '@/lib/auth'
 
 export const authOptions = {
@@ -23,9 +23,8 @@ export const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        const client = await clientPromise
-        const db = client.db('nitc-marketplace')
         
+        const db = await getDb()        
         const user = await db.collection('users').findOne({ 
           email: credentials.email 
         })
@@ -54,9 +53,8 @@ export const authOptions = {
           return false
         }
         
-        const client = await clientPromise
-        const db = client.db('nitc-marketplace')
         
+        const db = await getDb()        
         // Check if user exists
         let user = await db.collection('users').findOne({ email: profile.email })
         
@@ -77,9 +75,8 @@ export const authOptions = {
     
     async session({ session, token }) {
       if (session?.user) {
-        const client = await clientPromise
-        const db = client.db('nitc-marketplace')
-        const user = await db.collection('users').findOne({ email: session.user.email })
+        
+        const db = await getDb()        const user = await db.collection('users').findOne({ email: session.user.email })
         
         session.user.id = user._id.toString()
         session.user.phone = user.phone

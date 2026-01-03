@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
@@ -13,9 +13,8 @@ export async function GET(request, context) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const event = await db.collection('events').findOne({
       _id: new ObjectId(id)
     })
@@ -45,9 +44,8 @@ export async function PUT(request, context) {
     const data = await request.json()
     const { title, description, venue, eventDate, image } = data
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const event = await db.collection('events').findOne({ _id: new ObjectId(id) })
     if (!event) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -92,9 +90,8 @@ export async function DELETE(request, context) {
 
     if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const event = await db.collection('events').findOne({ _id: new ObjectId(id) })
     if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
 

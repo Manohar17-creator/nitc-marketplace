@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import { verifyToken } from '@/lib/auth'
 
@@ -9,9 +9,8 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const placement = searchParams.get('placement') // 'home', 'events', or null (for admin)
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // Base query: Active ads only
     let query = { active: true }
 
@@ -59,9 +58,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const newAd = {
       title,
       imageUrl,
@@ -94,9 +92,8 @@ export async function PUT(request) {
 
     if (!_id) return NextResponse.json({ error: 'Ad ID required' }, { status: 400 })
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     await db.collection('ads').updateOne(
       { _id: new ObjectId(_id) },
       { 
@@ -131,9 +128,8 @@ export async function DELETE(request) {
 
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 })
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     await db.collection('ads').deleteOne({ _id: new ObjectId(id) })
 
     return NextResponse.json({ success: true, message: 'Ad deleted' })

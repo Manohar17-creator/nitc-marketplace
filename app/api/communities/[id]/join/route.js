@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
@@ -18,9 +18,8 @@ export async function POST(request, context) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // Check if already a member
     const existing = await db.collection('community_members').findOne({
       userId: new ObjectId(decoded.userId),
@@ -74,9 +73,8 @@ export async function DELETE(request, context) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     await db.collection('community_members').deleteOne({
       userId: new ObjectId(decoded.userId),
       communityId: new ObjectId(id)

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
@@ -15,9 +15,8 @@ export async function GET(request, context) {
       )
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const post = await db.collection('community_posts').findOne({
       _id: new ObjectId(postId)
     })
@@ -55,9 +54,8 @@ export async function DELETE(request, context) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // Get post to check ownership
     const post = await db.collection('community_posts').findOne({
       _id: new ObjectId(postId)

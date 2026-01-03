@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
 export async function GET(request, context) {
@@ -8,9 +8,8 @@ export async function GET(request, context) {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') || 'feed'
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // ✅ Fetch the full user document to get the latest picture
     const member = await db.collection('users').findOne({
       _id: new ObjectId(userId)

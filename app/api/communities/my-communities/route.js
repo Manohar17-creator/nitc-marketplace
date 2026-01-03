@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
@@ -12,9 +12,8 @@ export async function GET(request) {
     const decoded = await verifyToken(token) // ensure verifyToken is awaited if it's async
     if (!decoded) return NextResponse.json({ communityIds: [] })
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // ⚡ OPTIMIZATION 1: Use Projection
     // Only fetch the 'communityId' field. Don't fetch the whole document.
     const memberships = await db

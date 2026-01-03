@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
@@ -27,9 +27,8 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     // 3. Fetch raw notifications (fetch extra to account for cleanup)
     const rawNotifications = await db.collection('notifications')
       .find({ userId })

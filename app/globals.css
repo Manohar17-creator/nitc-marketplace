@@ -277,3 +277,42 @@ body {
   -webkit-touch-callout: none;
 }
 
+/* app/globals.css */
+
+@media only screen and (max-width: 782px) {
+  .timetable-table {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    border-collapse: separate !important; /* Required for sticky borders */
+    border-spacing: 0;
+  }
+
+  /* Keep the internal structure as a table to preserve columns */
+  .timetable-table tbody {
+    display: table !important;
+    min-width: 900px !important; /* Forces the width */
+    width: 100%;
+  }
+
+  .timetable-table thead {
+    display: table-header-group !important;
+    min-width: 900px !important;
+  }
+}
+
+@media screen and (max-width: 782px) {
+
+  table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  table tbody {
+    display: table;
+    width: auto;
+  }
+
+}

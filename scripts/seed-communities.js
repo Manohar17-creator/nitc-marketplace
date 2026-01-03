@@ -106,8 +106,7 @@ async function seedCommunities() {
   
   try {
     await client.connect()
-    const db = client.db('nitc-marketplace')
-    
+    const db = await getDb()    
     const result = await db.collection('communities').insertMany(
       communities.map(c => ({
         ...c,

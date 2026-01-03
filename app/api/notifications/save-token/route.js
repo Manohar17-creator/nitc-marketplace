@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import { verifyToken } from '@/lib/auth'
 
@@ -33,9 +33,8 @@ export async function POST(request) {
     }
 
     // 4. Database operations
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
     
+    const db = await getDb()    
     let userId
     try {
       userId = new ObjectId(decoded.userId)
@@ -120,9 +119,8 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'FCM token required' }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-    const userId = new ObjectId(decoded.userId)
+    
+    const db = await getDb()    const userId = new ObjectId(decoded.userId)
 
     // Remove the FCM token from user's array
     await db.collection('users').updateOne(

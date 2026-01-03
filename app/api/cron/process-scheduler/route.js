@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getDb } from '@/lib/mongodb';
 import { broadcastNotification } from '@/lib/notifications';
 
 export async function GET(request) {
@@ -10,8 +10,8 @@ export async function GET(request) {
   }
 
   try {
-    const client = await clientPromise;
-    const db = client.db('nitc-marketplace');
+    ;
+    const db = await getDb();
     
     // 1. Get Current Time details (in IST if your users are Indian)
     // We add 5.5 hours to UTC to get IST

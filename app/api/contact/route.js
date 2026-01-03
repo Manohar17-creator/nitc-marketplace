@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb' // 👈 Import ObjectId
 
@@ -24,9 +24,8 @@ export async function POST(request) {
             
             // 2. 🔍 LOOK UP USER IN DATABASE
             // This guarantees we get the real, current name (e.g., "Manohar")
-            const client = await clientPromise
-            const db = client.db('nitc-marketplace')
             
+            const db = await getDb()            
             // Try to find the user to get exact details
             try {
                 const userProfile = await db.collection('users').findOne({ 
@@ -51,9 +50,8 @@ export async function POST(request) {
     }
 
     // 3. Save Message
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     await db.collection('messages').insertOne({
       subject,
       message,

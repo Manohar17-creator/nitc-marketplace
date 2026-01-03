@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
 // GET - Fetch all communities
 export async function GET(request) {
   try {
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const communities = await db
       .collection('communities')
       .find({})
@@ -31,9 +30,8 @@ export async function POST(request) {
     const data = await request.json()
     const { name, description, icon, color, category } = data
 
-    const client = await clientPromise
-    const db = client.db('nitc-marketplace')
-
+    
+    const db = await getDb()
     const result = await db.collection('communities').insertOne({
       name,
       description,

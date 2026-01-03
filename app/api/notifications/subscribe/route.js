@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import admin from 'firebase-admin'
 import { verifyToken } from '@/lib/auth'
-import clientPromise from '@/lib/mongodb'
+import { getDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
 // Initialize Firebase Admin (Singleton Pattern)
@@ -52,9 +52,8 @@ export async function POST(request) {
 
     // 4. Optional: Update user's subscription status in database
     try {
-      const client = await clientPromise
-      const db = client.db('nitc-marketplace')
       
+      const db = await getDb()      
       await db.collection('users').updateOne(
         { _id: new ObjectId(decoded.userId) },
         { 
