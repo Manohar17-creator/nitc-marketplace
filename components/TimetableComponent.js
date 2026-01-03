@@ -316,13 +316,13 @@ export default function TimetableComponent() {
 
       {isEditMode && !mergingMode && (
         <div className="mb-3 p-2 bg-blue-50 rounded-lg text-xs text-blue-800 border border-blue-200">
-          <strong>Edit Mode:</strong> Click to edit • Long press to change color
+            <strong>Edit Mode:</strong> Click to edit text • Double-click to change color
         </div>
-      )}
+        )}
 
       {mergingMode && (
         <div className="mb-3 p-2 bg-purple-50 rounded-lg text-xs text-purple-800 border border-purple-200">
-          <strong>Merge Mode:</strong> Click cells in the same row (one by one) → Click Merge button. Double-click merged cells to unmerge.
+          <strong>Merge Mode:</strong> Click cells in the same row (one by one) → Click Merge button. Double-click any cell to unmerge.
         </div>
       )}
 
@@ -370,54 +370,67 @@ export default function TimetableComponent() {
                   const isSelected = mergeSelection.includes(cellKey)
 
                   return (
-                    <td
-                      key={period.id}
-                      colSpan={mergeInfo ? mergeInfo.colspan : 1}
-                      onClick={() => handleCellClick(day, period.id)}
-                      onContextMenu={(e) => {
-                        if (isEditMode && !mergingMode) {
-                          e.preventDefault()
-                          handleCellLongPress(day, period.id)
-                        }
-                      }}
-                      onDoubleClick={() => isEditMode && mergeInfo && unmergeCell(day, period.id)}
-                      className={`border-2 border-gray-300 p-1.5 text-center font-semibold text-[10px] sm:text-xs transition-all ${
-                        isEditMode && !isEditing ? 'cursor-pointer' : ''
-                      } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
-                      style={{ 
-                        backgroundColor: isSelected ? '#dbeafe' : colorData.bg, 
-                        color: '#000',
-                        minHeight: '45px',
-                        height: '45px',
-                        minWidth: '85px'
-                      }}
-                    >
-                      {isEditing ? (
-                        <div className="flex items-center justify-center h-full" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="text"
-                            value={tempValue}
-                            onChange={(e) => setTempValue(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveEdit()
-                              if (e.key === 'Escape') {
-                                setEditingCell(null)
-                                setTempValue('')
-                              }
-                            }}
-                            onBlur={saveEdit}
-                            className="w-full px-1 py-0.5 text-[10px] sm:text-xs border-2 border-blue-500 rounded text-black bg-white font-semibold"
-                            maxLength={15}
-                            autoFocus
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-full break-words">
-                          {cellData.text || (isEditMode && !mergingMode ? 'Click' : '')}
-                        </div>
-                      )}
-                    </td>
-                  )
+    <td
+      key={period.id}
+      colSpan={mergeInfo ? mergeInfo.colspan : 1}
+      // SINGLE CLICK: Handles text editing or merge selection
+      onClick={() => handleCellClick(day, period.id)}
+      
+      // DOUBLE CLICK: Handles color picker or unmerging
+      onDoubleClick={(e) => {
+        if (!isEditMode) return;
+        if (mergeInfo) {
+          unmergeCell(day, period.id);
+        } else {
+          // Open Color Picker on Double Click
+          setSelectedCell(cellKey);
+          setShowColorPicker(true);
+        }
+      }}
+      
+      className={`relative border-2 border-gray-300 p-1.5 text-center font-semibold text-[10px] sm:text-xs transition-all ${
+        isEditMode && !isEditing ? 'cursor-pointer hover:brightness-95' : ''
+      } ${isSelected ? 'ring-2 ring-blue-500 z-10' : ''}`}
+      style={{ 
+        backgroundColor: isSelected ? '#dbeafe' : colorData.bg, 
+        color: '#000',
+        minHeight: '55px',
+        height: '55px',
+        minWidth: '85px'
+      }}
+    >
+      {isEditMode && !mergeInfo && !isEditing && (
+        <div className="absolute top-0.5 right-0.5 opacity-30">
+          <Palette size={8} />
+        </div>
+      )}
+
+      {isEditing ? (
+        <div className="flex items-center justify-center h-full" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="text"
+            value={tempValue}
+            onChange={(e) => setTempValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveEdit()
+              if (e.key === 'Escape') {
+                setEditingCell(null)
+                setTempValue('')
+              }
+            }}
+            onBlur={saveEdit}
+            className="w-full px-1 py-0.5 text-[10px] sm:text-xs border-2 border-blue-500 rounded text-black bg-white font-semibold"
+            maxLength={15}
+            autoFocus
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full break-words leading-tight">
+          {cellData.text || (isEditMode && !mergingMode ? <span className="text-gray-400 font-normal">Empty</span> : '')}
+        </div>
+      )}
+    </td>
+  )
                 })}
               </tr>
             ))}
