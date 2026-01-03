@@ -120,7 +120,7 @@ export async function DELETE(request) {
     }
 
     
-    const db = await getDb()    const userId = new ObjectId(decoded.userId)
+    const db = await getDb();    const userId = new ObjectId(decoded.userId)
 
     // Remove the FCM token from user's array
     await db.collection('users').updateOne(

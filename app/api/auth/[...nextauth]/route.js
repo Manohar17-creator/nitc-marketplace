@@ -76,7 +76,7 @@ export const authOptions = {
     async session({ session, token }) {
       if (session?.user) {
         
-        const db = await getDb()        const user = await db.collection('users').findOne({ email: session.user.email })
+        const db = await getDb();        const user = await db.collection('users').findOne({ email: session.user.email })
         
         session.user.id = user._id.toString()
         session.user.phone = user.phone
