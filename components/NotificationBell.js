@@ -45,6 +45,7 @@ export default function NotificationBell() {
   }, [])
 
   const handleNotificationClick = async (notif) => {
+    // 1. Mark as read logic (Keep this as is)
     if (!notif.read) {
       setNotifications(prev => prev.map(n => n._id === notif._id ? { ...n, read: true } : n))
       setUnreadCount(prev => Math.max(0, prev - 1))
@@ -57,7 +58,16 @@ export default function NotificationBell() {
     }
 
     setIsOpen(false)
-    if (notif.link) router.push(notif.link)
+
+    // 2. 🚀 FIXED REDIRECTION LOGIC
+    if (!notif.link) {
+      console.log("No link provided for this notification, staying on page.");
+      return; // Do nothing if there's no link, preventing 404
+    }
+
+    // Optional: Add a safety check for absolute vs relative paths
+    const targetPath = notif.link.startsWith('/') ? notif.link : `/${notif.link}`;
+    router.push(targetPath);
   }
 
   // 🎨 Helper to get icon based on notification type

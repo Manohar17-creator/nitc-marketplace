@@ -7,6 +7,7 @@ import GoogleAdSense from '@/components/GoogleAdSense'
 import ServiceWorkerUpdater from '@/components/ServiceWorkerUpdater'
 import NotificationManager from '@/components/NotificationManager'
 import Script from 'next/script' // ✅ Required for Schema
+import NotificationAutoPrompt from '@/components/NotificationAutoPrompt'
 
 export const metadata = {
   title: {
@@ -69,6 +70,7 @@ export default function RootLayout({ children }) {
         <IOSInstallPrompt />
         <ForegroundToast />
         <NotificationManager />
+        <NotificationAutoPrompt />
         
         <main className="flex-1 overflow-y-auto pb-nav-safe">
           {children}

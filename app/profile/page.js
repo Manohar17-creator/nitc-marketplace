@@ -8,6 +8,8 @@ import {
 import Link from 'next/link'
 import { getUserData, getAuthToken, logout } from '@/lib/auth-client'
 import NotificationSettingsButton from '@/components/NotificationSettingsButton'
+import CompactUnsubscribe from '@/components/CompactUnsubscribe'
+import { Heart } from 'lucide-react'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -27,6 +29,9 @@ export default function ProfilePage() {
     phone: '',
     picture: ''
   })
+
+  const [interestedEvents, setInterestedEvents] = useState([])
+  const [loadingEvents, setLoadingEvents] = useState(true)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -51,6 +56,7 @@ export default function ProfilePage() {
         setLoading(false)
       }
       loadMyListings()
+      loadInterestedEvents()
     }
   }, [router])
 
@@ -102,6 +108,14 @@ export default function ProfilePage() {
     }
   }
 
+  const handleLogout = async () => {
+  if (confirm('Are you sure you want to logout?')) {
+    // This now calls your updated async logout() in lib/auth-client.js
+    // which handles the DELETE /api/notifications/save-token request
+    await logout(); 
+  }
+};
+
   // ✅ New: Handle Removing Picture (Temporary in edit mode)
   const handleRemovePicture = () => {
     setEditData(prev => ({ ...prev, picture: '' }))
@@ -117,6 +131,52 @@ export default function ProfilePage() {
     })
     setEditMode(false)
   }
+
+  const loadInterestedEvents = async () => {
+  setLoadingEvents(true);
+  try {
+    const token = getAuthToken();
+    const response = await fetch('/api/user/interested-events', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+
+    if (response.ok) {
+      setInterestedEvents(data.events || []);
+    }
+  } catch (error) {
+    console.error('Error loading interested events:', error);
+  } finally {
+    setLoadingEvents(false);
+  }
+};
+
+const handleRemoveInterest = async (eventId) => {
+  // 1. Optimistic Update: Hide it from the list immediately
+  setInterestedEvents(prev => prev.filter(e => e._id !== eventId));
+
+  try {
+    const token = getAuthToken();
+    const res = await fetch('/api/events/interested', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${token}` 
+      },
+      body: JSON.stringify({ eventId })
+    });
+
+    if (!res.ok) throw new Error();
+    
+    // 2. Alert success quietly (optional)
+    console.log("Event removed from interest list");
+  } catch (error) {
+    console.error("Failed to remove interest");
+    // 3. Re-fetch if it fails to ensure the UI matches the DB
+    loadInterestedEvents();
+    alert("Could not update. Please try again.");
+  }
+};
 
   // Handle Saving Profile Changes
   const handleSaveProfile = async () => {
@@ -189,7 +249,10 @@ export default function ProfilePage() {
       <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white z-20 shadow-lg safe-top">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-16 sm:h-[72px]">
           <h1 className="text-lg sm:text-xl font-semibold">My Profile</h1>
-          <button onClick={() => confirm('Logout?') && logout()} className="p-2 hover:bg-white/10 rounded-full transition-colors active:scale-95">
+          <button 
+            onClick={handleLogout} 
+            className="p-2 hover:bg-white/10 rounded-full transition-colors active:scale-95"
+          >
             <LogOut size={20} />
           </button>
         </div>
@@ -237,9 +300,18 @@ export default function ProfilePage() {
 
         {/* App Settings */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Settings</h3>
+        <h3 className="font-semibold text-gray-900 mb-3">Settings</h3>
+        
+        <div className="space-y-4">
+          {/* Main Toggle/Enable Button */}
           <NotificationSettingsButton userId={user?.id} />
+          
+          {/* 🚀 Compact Unsubscribe Link */}
+          <div className="flex justify-center pt-1">
+            <CompactUnsubscribe />
+          </div>
         </div>
+      </div>
 
         {/* Help & Support */}
         <Link href="/contact">
@@ -267,7 +339,58 @@ export default function ProfilePage() {
             <ChevronRight size={20} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
           </div>
         </Link>
+{/* --- INTERESTED EVENTS --- */}
+<div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+  <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
+    <h3 className="font-bold text-gray-900 flex items-center gap-2 text-sm sm:text-base">
+      <Heart size={18} className="text-red-500 fill-red-500" /> 
+      Interested Events ({interestedEvents.length})
+    </h3>
+    <Link href="/events" className="text-blue-600 text-xs font-bold hover:underline">Explore</Link>
+  </div>
+  
+  <div className="p-4 space-y-3">
+    {loadingEvents ? (
+      <div className="flex justify-center py-4"><Loader2 className="animate-spin text-blue-600 size-5" /></div>
+    ) : interestedEvents.length === 0 ? (
+      <p className="text-center py-4 text-xs text-gray-400">No interested events yet.</p>
+    ) : (
+      interestedEvents.map(event => (
+        <div key={event._id} className="flex items-center justify-between p-3 border border-gray-50 rounded-xl hover:bg-gray-50 transition-colors group">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="bg-red-50 p-2 rounded-lg text-red-500 flex-shrink-0">
+              <Calendar size={18} />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-semibold text-gray-900 truncate text-sm">{event.title}</h4>
+              <p className="text-[10px] text-gray-400 truncate">
+                {event.venue} • {new Date(event.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {/* 🚀 REMOVE BUTTON: Compact and subtle */}
+            <button 
+              onClick={() => handleRemoveInterest(event._id)}
+              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all active:scale-90"
+              title="Remove Interest"
+            >
+              <Trash2 size={16} />
+            </button>
 
+            <Link 
+              href="/events" 
+              className="px-3 py-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 rounded-lg whitespace-nowrap active:scale-95 transition-transform"
+            >
+              VIEW
+            </Link>
+          </div>
+        </div>
+      ))
+    )}
+  </div>
+</div>
         {/* Listings Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">

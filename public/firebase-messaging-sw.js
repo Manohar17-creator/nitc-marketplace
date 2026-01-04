@@ -1,21 +1,15 @@
-// 1. Service Worker Lifecycle (Keeps your PWA updated)
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
+// public/firebase-messaging-sw.js
 
+// 1. Service Worker Lifecycle (Immediate Takeover)
 self.addEventListener('install', (event) => {
-  console.log('[SW] 📥 Installing new version & skipping waiting...');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] 🚀 Activating new version & claiming clients...');
-  event.waitUntil(clients.claim());
+  event.waitUntil(clients.claim()); // 🚀 Crucial for "Fast-Fail" to work
 });
 
-// 2. Firebase Init
+// 2. Firebase Init (Using Compat for maximum mobile browser support)
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
@@ -30,34 +24,35 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// 3. 🚨 THE FIX FOR DOUBLE NOTIFICATIONS
+// 3. Optimized Background Handler
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message', payload);
+  console.log('[SW] Background message received', payload);
   
-  // ❌ REMOVED manual display logic. 
-  // Firebase SDK automatically handles display when "notification" key is present.
+  // Only manually show notification if the 'notification' object is missing
+  if (!payload.notification && payload.data) {
+    const { title, message, url } = payload.data;
+    self.registration.showNotification(title || "NITC Update", {
+      body: message,
+      icon: '/logo.png', // Ensure this exists in your public folder
+      data: { url: url || '/' }
+    });
+  }
 });
 
-// 4. Click Handling (Optional but good for deep linking)
+// 4. Click Handling with Deep Linking
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
-  // If your notification has a data.link or data.url, use it. Otherwise go home.
-  const urlToOpen = event.notification.data?.link || event.notification.data?.url || '/';
+  const urlToOpen = event.notification.data?.url || '/notifications';
   
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // 1. If tab is already open, focus it
         for (const client of clientList) {
           if (client.url.includes(urlToOpen) && 'focus' in client) {
             return client.focus();
           }
         }
-        // 2. Otherwise open new window
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
+        if (clients.openWindow) return clients.openWindow(urlToOpen);
       })
   );
 });

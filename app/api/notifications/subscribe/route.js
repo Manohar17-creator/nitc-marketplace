@@ -25,75 +25,64 @@ export async function POST(request) {
     // 1. Verify Authentication
     const authHeader = request.headers.get('authorization')
     const authToken = authHeader?.split(' ')[1]
-    
-    if (!authToken) {
-      return NextResponse.json({ error: 'Unauthorized - No token' }, { status: 401 })
-    }
-
     const decoded = verifyToken(authToken)
     
     if (!decoded) {
-      return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 2. Get FCM Token from Request Body
-    const { fcmToken } = await request.json()
+    // 2. Safely Get FCM Token from Request Body
+    const text = await request.text(); 
+    if (!text) {
+      return NextResponse.json({ error: 'FCM token missing' }, { status: 400 });
+    }
 
+    let body;
+    try {
+      body = JSON.parse(text); 
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid JSON input' }, { status: 400 });
+    }
+
+    const { fcmToken } = body;
     if (!fcmToken) {
       return NextResponse.json({ error: 'FCM token missing' }, { status: 400 })
     }
 
-    console.log(`🔔 Subscribing user ${decoded.userId} to all_users topic...`)
+    // 3. Database Update (Primary Source of Truth)
+    // We do this first because it's fast and local.
+    const db = await getDb()      
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(decoded.userId) },
+      { 
+        $set: { 
+          subscribedToTopics: ['all_users'],
+          lastTopicSubscription: new Date()
+        } 
+      }
+    )
 
-    // 3. Subscribe to Firebase Cloud Messaging Topic
-    const response = await admin.messaging().subscribeToTopic(fcmToken, 'all_users')
+    // 4. 🚀 FIRE-AND-FORGET: Background Subscription
+    // We do NOT 'await' this. This prevents the 15s timeout error.
+    console.log(`🔔 Initiating background subscription for ${decoded.userId}...`)
     
-    console.log('✅ Firebase Topic Subscription Response:', response)
+    admin.messaging().subscribeToTopic(fcmToken, 'all_users')
+      .then((response) => {
+        console.log('✅ Background Subscription Success:', response)
+      })
+      .catch((err) => {
+        // Even if this fails, the user is still "registered" in our DB
+        console.error('❌ Background Subscription Error:', err.message)
+      })
 
-    // 4. Optional: Update user's subscription status in database
-    try {
-      
-      const db = await getDb()      
-      await db.collection('users').updateOne(
-        { _id: new ObjectId(decoded.userId) },
-        { 
-          $set: { 
-            subscribedToTopics: ['all_users'],
-            lastTopicSubscription: new Date()
-          } 
-        }
-      )
-      console.log('✅ Updated user subscription status in DB')
-    } catch (dbError) {
-      console.warn('⚠️ Failed to update DB (non-critical):', dbError.message)
-      // Don't fail the request if DB update fails
-    }
-
+    // 5. Respond immediately to the Frontend
     return NextResponse.json({ 
-      success: true,
-      message: 'Successfully subscribed to broadcast notifications',
-      successCount: response.successCount || 1
+      success: true, 
+      message: 'Subscription process started' 
     })
 
   } catch (error) {
-    console.error('❌ Subscription Error:', error)
-    
-    // Handle specific Firebase errors
-    if (error.code === 'messaging/invalid-registration-token') {
-      return NextResponse.json({ 
-        error: 'Invalid FCM token. Please refresh notifications.' 
-      }, { status: 400 })
-    }
-    
-    if (error.code === 'messaging/registration-token-not-registered') {
-      return NextResponse.json({ 
-        error: 'FCM token not registered. Please enable notifications again.' 
-      }, { status: 400 })
-    }
-
-    return NextResponse.json({ 
-      error: 'Failed to subscribe to notifications',
-      details: error.message 
-    }, { status: 500 })
+    console.error('❌ Critical Route Error:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

@@ -3,9 +3,9 @@ name: Daily Attendance Reminder
 on:
   schedule:
     # 12:30 UTC = 18:00 IST (6:00 PM)
-    - cron: "30 12 * * *"
+    # Fields: Minute | Hour | Day of Month | Month | Day of Week
+    - cron: "30 12 * * 1-5"
 
-  # Optional: Allows you to click a button to test it immediately
   workflow_dispatch:
 
 jobs:

@@ -150,36 +150,42 @@ export default function EventsPage() {
   }
 
   const handleInterest = async (eventId, index) => {
-    const token = getAuthToken()
-    if (!token) return router.push('/auth/login')
+  const token = getAuthToken()
+  if (!token) return router.push('/auth/login')
 
-    // Optimistic Update
-    const newFeed = [...feed]
-    const item = newFeed[index]
-    if (item.type !== 'event') return
+  // Optimistic Update
+  const newFeed = [...feed]
+  const item = newFeed[index]
+  if (item.type !== 'event') return
 
-    const event = item.data
-    const isInterested = event.interested.includes(currentUser?.userId)
-    
-    if (isInterested) {
-      event.interested = event.interested.filter(id => id !== currentUser.userId)
-    } else {
-      event.interested.push(currentUser.userId)
-    }
-    
-    setFeed(newFeed)
-    localStorage.setItem(CACHE_KEY, JSON.stringify(newFeed))
-
-    try {
-      await fetch('/api/events/interested', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ eventId })
-      })
-    } catch (error) {
-      fetchEvents(true) // Revert on error
-    }
+  const event = item.data
+  // Ensure we are checking against the correct field name (userId)
+  const isCurrentlyInterested = event.interested?.includes(currentUser?.userId)
+  
+  if (isCurrentlyInterested) {
+    event.interested = event.interested.filter(id => id !== currentUser.userId)
+  } else {
+    if (!event.interested) event.interested = []
+    event.interested.push(currentUser.userId)
   }
+  
+  setFeed(newFeed)
+  localStorage.setItem(CACHE_KEY, JSON.stringify(newFeed))
+
+  try {
+    const res = await fetch('/api/events/interested', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ eventId })
+    })
+    
+    // If backend fails, the background polling (fetchEvents) will eventually fix the UI
+    if (!res.ok) throw new Error()
+  } catch (error) {
+    console.error("Failed to sync interest")
+    // Optional: Revert UI or wait for silent refresh
+  }
+}
 
   const handleDelete = async (eventId) => {
     if (!confirm('Are you sure you want to delete this event?')) return

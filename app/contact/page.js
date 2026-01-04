@@ -97,16 +97,11 @@ export default function ContactPage() {
         </div>
 
         <div className="mt-8 text-center">
-  <p className="text-gray-500 text-sm mb-2">Or email us directly at</p>
-  <a 
-    href="https://mail.google.com/mail/?view=cm&fs=1&to=support@unyfy.in" 
-    target="_blank"
-    rel="noopener noreferrer"
-    className="text-blue-600 font-bold hover:underline"
-  >
-    support@unyfy.in
-  </a>
-</div>
+          <p className="text-gray-500 text-sm mb-2">Or email us directly at</p>
+          <a href="mailto:support@unyfy.in" className="text-blue-600 font-bold hover:underline">
+            support@unyfy.in
+          </a>
+        </div>
       </div>
     </div>
   )

@@ -2,7 +2,22 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
-import { getMessaging } from 'firebase-admin/messaging'
+import admin from 'firebase-admin'
+
+
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+    });
+  } catch (error) {
+    console.error('❌ Firebase Init Error:', error);
+  }
+}
 
 // GET: Fetch Events + Mix in Ads
 export async function GET(request) {
@@ -58,18 +73,16 @@ export async function GET(request) {
 }
 
 // POST: Create New Event
+// POST: Create New Event
 export async function POST(request) {
   try {
-    const token = request.headers.get('authorization')?.split(' ')[1]
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    
-    const decoded = verifyToken(token)
-    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    const token = request.headers.get('authorization')?.split(' ')[1];
+    const decoded = verifyToken(token);
+    if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    
-    const db = await getDb()    
-    const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) })
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const db = await getDb();    
+    const user = await db.collection('users').findOne({ _id: new ObjectId(decoded.userId) });
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     // 1. Rate Limiting (Cooldown)
     const COOLDOWN_MS = 30 * 1000;
@@ -78,12 +91,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Please wait a moment' }, { status: 429 });
     }
 
-    const data = await request.json()
-    const { title, description, venue, eventDate, image } = data
+    const data = await request.json();
+    const { title, description, venue, eventDate, image } = data;
 
     // 2. Create Event Document
-    const dateObj = new Date(eventDate)
-    const expiryObj = new Date(dateObj); expiryObj.setDate(expiryObj.getDate() + 1);
+    const dateObj = new Date(eventDate);
+    const expiryObj = new Date(dateObj); 
+    expiryObj.setDate(expiryObj.getDate() + 1);
 
     const newEvent = {
       title: String(title).trim(),
@@ -97,41 +111,47 @@ export async function POST(request) {
       reports: [],
       hidden: false,
       createdAt: new Date()
-    }
+    };
 
-    const result = await db.collection('events').insertOne(newEvent)
-    await db.collection('users').updateOne({ _id: user._id }, { $set: { lastPostedAt: new Date() } })
+    // --- 🛠️ FIXED SECTION START ---
+    const result = await db.collection('events').insertOne(newEvent);
+    
+    // Ensure we use a clean updateOne call
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(user._id) }, 
+      { $set: { lastPostedAt: new Date() } }
+    );
+    // --- 🛠️ FIXED SECTION END ---
 
     // 3. ✅ MOBILE NOTIFICATION LOGIC (FCM)
     (async () => {
       try {
-        const allUsers = await db.collection('users')
-          .find({ fcmToken: { $exists: true, $ne: null }, _id: { $ne: user._id } })
-          .project({ fcmToken: 1 })
-          .limit(500)
-          .toArray()
+        const usersWithTokens = await db.collection('users')
+          .find({ fcmTokens: { $exists: true, $not: { $size: 0 } } })
+          .project({ fcmTokens: 1 })
+          .limit(100)
+          .toArray();
 
-        if (allUsers.length > 0) {
-          const tokens = [...new Set(allUsers.map(u => u.fcmToken))]
-          const messaging = getMessaging()
-          
-          await messaging.sendEachForMulticast({
-            tokens,
+        const tokens = usersWithTokens.flatMap(u => u.fcmTokens || []);
+
+        if (tokens.length > 0) {
+          await admin.messaging().sendEachForMulticast({
+            tokens: tokens.slice(0, 500),
             notification: { 
-              title: `📅 New Event: ${String(title).trim()}`, 
-              body: `Happening at ${venue} on ${dateObj.toLocaleDateString()}` 
+              title: `📅 New Event: ${title}`, 
+              body: `Happening at ${venue}` 
             },
-            data: { url: '/events' },
-            android: { priority: 'high' }
-          })
+            data: { url: '/events' }
+          });
         }
-      } catch (err) { console.error("FCM Error:", err) }
-    })()
+      } catch (err) { console.error("FCM Background Error:", err); }
+    })();
 
-    return NextResponse.json({ success: true, eventId: result.insertedId })
+    return NextResponse.json({ success: true, eventId: result.insertedId });
 
   } catch (error) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    console.error("POST Event Error:", error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
