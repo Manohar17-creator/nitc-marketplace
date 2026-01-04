@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar, Phone, ZoomIn, X, Loader2, Download, FileText, Trash2, Plus } from 'lucide-react'
+import { ArrowLeft, Calendar, Phone, ZoomIn, X, Loader2, FileText, Trash2, Plus, GripVertical } from 'lucide-react'
 import { getAuthToken, getUserData } from '@/lib/auth-client'
 
 export default function CampusResourcesPage() {
@@ -20,6 +20,10 @@ export default function CampusResourcesPage() {
   const [newContactTitle, setNewContactTitle] = useState('')
   const [newDocumentTitle, setNewDocumentTitle] = useState('')
   const [newDocumentImages, setNewDocumentImages] = useState([])
+  
+  // Drag state for reordering
+  const [draggedImageIndex, setDraggedImageIndex] = useState(null)
+  const [draggedDocId, setDraggedDocId] = useState(null)
 
   useEffect(() => {
     fetchResources()
@@ -196,7 +200,8 @@ export default function CampusResourcesPage() {
         body: JSON.stringify({
           type: 'document',
           title: newDocumentTitle,
-          imageUrls: newDocumentImages
+          imageUrls: newDocumentImages,
+          sortOrder: documents.length
         })
       })
 
@@ -256,6 +261,90 @@ export default function CampusResourcesPage() {
     setNewDocumentImages(prev => prev.filter((_, i) => i !== index))
   }
 
+  // Drag and drop handlers for document images
+  const handleDragStart = (docId, imageIndex) => {
+    setDraggedImageIndex(imageIndex)
+    setDraggedDocId(docId)
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+  }
+
+  const handleDrop = async (docId, dropIndex) => {
+    if (draggedDocId !== docId || draggedImageIndex === null) return
+    
+    const doc = documents.find(d => d._id === docId)
+    if (!doc) return
+
+    const newImageUrls = [...doc.imageUrls]
+    const [draggedUrl] = newImageUrls.splice(draggedImageIndex, 1)
+    newImageUrls.splice(dropIndex, 0, draggedUrl)
+
+    try {
+      const token = getAuthToken()
+      const res = await fetch('/api/campus-resources/reorder-images', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          documentId: docId,
+          imageUrls: newImageUrls
+        })
+      })
+
+      if (res.ok) {
+        await fetchResources()
+      }
+    } catch (error) {
+      console.error('Reorder error:', error)
+      alert('Failed to reorder images')
+    }
+
+    setDraggedImageIndex(null)
+    setDraggedDocId(null)
+  }
+
+  // Delete individual image from document
+  const handleDeleteDocumentImage = async (docId, imageIndex) => {
+    if (!confirm('Delete this image?')) return
+
+    const doc = documents.find(d => d._id === docId)
+    if (!doc) return
+
+    const newImageUrls = doc.imageUrls.filter((_, idx) => idx !== imageIndex)
+
+    if (newImageUrls.length === 0) {
+      alert('Cannot delete the last image. Delete the entire document instead.')
+      return
+    }
+
+    try {
+      const token = getAuthToken()
+      const res = await fetch('/api/campus-resources/reorder-images', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          documentId: docId,
+          imageUrls: newImageUrls
+        })
+      })
+
+      if (res.ok) {
+        await fetchResources()
+        alert('Image deleted')
+      }
+    } catch (error) {
+      console.error('Delete error:', error)
+      alert('Failed to delete image')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -280,6 +369,7 @@ export default function CampusResourcesPage() {
       </div>
 
       <div className="pt-[80px] px-4 pb-8 max-w-4xl mx-auto space-y-6">
+        {/* Useful Documents Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="bg-purple-50 px-5 py-4 border-b flex items-center gap-3">
             <FileText className="text-purple-600" size={24} />
@@ -299,7 +389,6 @@ export default function CampusResourcesPage() {
                     className="w-full p-2 border rounded-lg"
                   />
                   
-                  {/* Image Preview */}
                   {newDocumentImages.length > 0 && (
                     <div className="space-y-2 mb-3">
                       <p className="text-sm text-gray-600 font-medium">Selected Images ({newDocumentImages.length}):</p>
@@ -368,10 +457,22 @@ export default function CampusResourcesPage() {
                       )}
                     </div>
                     
-                    {/* Vertical Image List */}
+                    {/* Vertical Image List with Drag & Drop */}
                     <div className="space-y-3">
                       {doc.imageUrls?.map((url, idx) => (
-                        <div key={idx} className="relative group">
+                        <div 
+                          key={idx} 
+                          className="relative group"
+                          draggable={isAdmin}
+                          onDragStart={() => handleDragStart(doc._id, idx)}
+                          onDragOver={handleDragOver}
+                          onDrop={() => handleDrop(doc._id, idx)}
+                        >
+                          {isAdmin && (
+                            <div className="absolute top-3 left-3 bg-black/60 text-white p-2 rounded-full z-10 cursor-move">
+                              <GripVertical size={18} />
+                            </div>
+                          )}
                           <img 
                             src={url} 
                             alt={`${doc.title} - Page ${idx + 1}`}
@@ -384,6 +485,14 @@ export default function CampusResourcesPage() {
                           >
                             <ZoomIn size={20} />
                           </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDeleteDocumentImage(doc._id, idx)}
+                              className="absolute bottom-3 right-3 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm hover:bg-red-600"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                           <span className="absolute bottom-3 left-3 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-medium">
                             Page {idx + 1} of {doc.imageUrls.length}
                           </span>
@@ -537,42 +646,33 @@ export default function CampusResourcesPage() {
             )}
           </div>
         </div>
-
-        {/* Useful Documents Section (NEW) */}
-        
       </div>
 
-      {/* Zoom Modal */}
+      {/* Fixed Zoom Modal for Mobile */}
       {zoomedImage && (
         <div 
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center touch-none"
           onClick={() => setZoomedImage(null)}
         >
-          <div className="relative max-w-6xl w-full max-h-[90vh] overflow-auto">
-            <button
-              onClick={() => setZoomedImage(null)}
-              className="fixed top-4 right-4 bg-white text-gray-900 p-3 rounded-full shadow-lg hover:bg-gray-100 z-10"
-            >
-              <X size={24} />
-            </button>
-            
-            <div className="flex flex-col items-center">
-              <h3 className="text-white text-lg font-bold mb-4">{zoomedImage.title}</h3>
-              <img 
-                src={zoomedImage.url} 
-                alt={zoomedImage.title}
-                className="w-full h-auto rounded-lg shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              />
-              <a
-                href={zoomedImage.url}
-                download
-                className="mt-4 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Download size={20} /> Download Image
-              </a>
-            </div>
+          <button
+            onClick={() => setZoomedImage(null)}
+            className="absolute top-4 right-4 bg-white/20 text-white p-3 rounded-full hover:bg-white/30 transition-colors z-[110] backdrop-blur-sm"
+          >
+            <X size={28} />
+          </button>
+          
+          <div className="w-full h-full flex items-center justify-center p-4 overflow-auto">
+            <img 
+              src={zoomedImage.url} 
+              alt={zoomedImage.title}
+              className="max-w-full max-h-full w-auto h-auto object-contain"
+              onClick={(e) => e.stopPropagation()}
+              style={{ touchAction: 'pinch-zoom' }}
+            />
+          </div>
+          
+          <div className="absolute bottom-6 left-0 right-0 text-center px-4">
+            <p className="text-white text-sm font-medium drop-shadow-lg">{zoomedImage.title}</p>
           </div>
         </div>
       )}
