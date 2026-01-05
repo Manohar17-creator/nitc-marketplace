@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Calendar, Phone, ZoomIn, X, Loader2, FileText, Trash2, Plus, GripVertical } from 'lucide-react'
 import { getAuthToken, getUserData } from '@/lib/auth-client'
+import ImageZoomModal from '@/components/ImageZoomModal'
 
 export default function CampusResourcesPage() {
   const router = useRouter()
@@ -650,32 +651,11 @@ export default function CampusResourcesPage() {
 
       {/* Fixed Zoom Modal for Mobile */}
       {zoomedImage && (
-        <div 
-          className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center touch-none"
-          onClick={() => setZoomedImage(null)}
-        >
-          <button
-            onClick={() => setZoomedImage(null)}
-            className="absolute top-4 right-4 bg-white/20 text-white p-3 rounded-full hover:bg-white/30 transition-colors z-[110] backdrop-blur-sm"
-          >
-            <X size={28} />
-          </button>
-          
-          <div className="w-full h-full flex items-center justify-center p-4 overflow-auto">
-            <img 
-              src={zoomedImage.url} 
-              alt={zoomedImage.title}
-              className="max-w-full max-h-full w-auto h-auto object-contain"
-              onClick={(e) => e.stopPropagation()}
-              style={{ touchAction: 'pinch-zoom' }}
-            />
-          </div>
-          
-          <div className="absolute bottom-6 left-0 right-0 text-center px-4">
-            <p className="text-white text-sm font-medium drop-shadow-lg">{zoomedImage.title}</p>
-          </div>
-        </div>
-      )}
+  <ImageZoomModal 
+    image={zoomedImage} 
+    onClose={() => setZoomedImage(null)} 
+  />
+)}
     </div>
   )
 }

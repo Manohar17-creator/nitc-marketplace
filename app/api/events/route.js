@@ -4,7 +4,6 @@ import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 import admin from 'firebase-admin'
 
-
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
@@ -22,9 +21,17 @@ if (!admin.apps.length) {
 // GET: Fetch Events + Mix in Ads
 export async function GET(request) {
   try {
-    
     const db = await getDb()
-    // 1. Fetch Active Ads for Events
+    
+    // 1. AUTO-DELETE EXPIRED EVENTS (24 hours after event date)
+    const twentyFourHoursAgo = new Date()
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
+    
+    await db.collection('events').deleteMany({
+      eventDate: { $lt: twentyFourHoursAgo }
+    })
+
+    // 2. Fetch Active Ads for Events
     const ads = await db.collection('ads')
       .find({ 
         active: true, 
@@ -32,16 +39,15 @@ export async function GET(request) {
       }) 
       .toArray()
 
-    // 2. Fetch Upcoming Events
+    // 3. Fetch Upcoming Events (SORTED BY NEAREST DATE FIRST)
     const events = await db.collection('events')
       .find({ 
-        expiryDate: { $gt: new Date() },
         hidden: { $ne: true } 
       }) 
-      .sort({ eventDate: 1 }) 
+      .sort({ eventDate: 1 }) // 1 = ascending (nearest first)
       .toArray()
 
-    // 3. Construct the Feed
+    // 4. Construct the Feed
     const mixedFeed = []
     
     // Force Ad First
@@ -51,7 +57,7 @@ export async function GET(request) {
 
     let adIndex = 1 
     
-    // 4. Mix the rest
+    // 5. Mix the rest
     events.forEach((event, index) => {
       mixedFeed.push({ type: 'event', data: event })
       
@@ -72,7 +78,6 @@ export async function GET(request) {
   }
 }
 
-// POST: Create New Event
 // POST: Create New Event
 export async function POST(request) {
   try {
@@ -96,8 +101,6 @@ export async function POST(request) {
 
     // 2. Create Event Document
     const dateObj = new Date(eventDate);
-    const expiryObj = new Date(dateObj); 
-    expiryObj.setDate(expiryObj.getDate() + 1);
 
     const newEvent = {
       title: String(title).trim(),
@@ -105,7 +108,6 @@ export async function POST(request) {
       venue: String(venue).trim(),
       image: image || null,
       eventDate: dateObj,
-      expiryDate: expiryObj, 
       organizer: { id: user._id, name: user.name },
       interested: [],
       reports: [],
@@ -113,15 +115,12 @@ export async function POST(request) {
       createdAt: new Date()
     };
 
-    // --- 🛠️ FIXED SECTION START ---
     const result = await db.collection('events').insertOne(newEvent);
     
-    // Ensure we use a clean updateOne call
     await db.collection('users').updateOne(
       { _id: new ObjectId(user._id) }, 
       { $set: { lastPostedAt: new Date() } }
     );
-    // --- 🛠️ FIXED SECTION END ---
 
     // 3. ✅ MOBILE NOTIFICATION LOGIC (FCM)
     (async () => {
@@ -176,7 +175,6 @@ export async function PUT(request, context) {
     if (!isOwner && !isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
     const dateObj = new Date(data.eventDate)
-    const expiryObj = new Date(dateObj); expiryObj.setDate(expiryObj.getDate() + 1)
 
     await db.collection('events').updateOne(
       { _id: new ObjectId(id) },
@@ -187,7 +185,6 @@ export async function PUT(request, context) {
           venue: data.venue,
           image: data.image || event.image,
           eventDate: dateObj,
-          expiryDate: expiryObj,
           updatedAt: new Date()
         }
       }
