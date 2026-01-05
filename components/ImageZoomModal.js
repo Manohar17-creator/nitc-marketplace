@@ -9,16 +9,18 @@ export default function ImageZoomModal({ image, onClose }) {
   const [isPinching, setIsPinching] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
+  const imageRef = useRef(null);
   const lastTouchDistance = useRef(0);
   const lastTouchCenter = useRef({ x: 0, y: 0 });
   const dragStart = useRef({ x: 0, y: 0 });
   const lastTap = useRef(0);
+  const tapTimeout = useRef(null);
 
   useEffect(() => {
-    // Prevent body scroll when modal is open
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = 'unset';
+      if (tapTimeout.current) clearTimeout(tapTimeout.current);
     };
   }, []);
 
@@ -36,6 +38,12 @@ export default function ImageZoomModal({ image, onClose }) {
   };
 
   const handleTouchStart = (e) => {
+    // Clear any pending tap timeout
+    if (tapTimeout.current) {
+      clearTimeout(tapTimeout.current);
+      tapTimeout.current = null;
+    }
+
     if (e.touches.length === 2) {
       // Pinch zoom
       e.preventDefault();
@@ -45,21 +53,28 @@ export default function ImageZoomModal({ image, onClose }) {
       lastTouchCenter.current = getCenter(e.touches);
     } else if (e.touches.length === 1 && scale > 1) {
       // Single finger drag when zoomed
+      e.preventDefault();
       setIsDragging(true);
       dragStart.current = {
         x: e.touches[0].clientX - position.x,
         y: e.touches[0].clientY - position.y,
       };
     } else if (e.touches.length === 1) {
-      // Handle double tap
+      // Handle double tap detection
       const now = Date.now();
       const DOUBLE_TAP_DELAY = 300;
       
       if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-        // Double tap detected - zoom to tap location
+        // Double tap detected
+        e.preventDefault();
         handleDoubleTap(e.touches[0]);
+      } else {
+        // First tap - wait to see if there's a second tap
+        lastTap.current = now;
+        tapTimeout.current = setTimeout(() => {
+          tapTimeout.current = null;
+        }, DOUBLE_TAP_DELAY);
       }
-      lastTap.current = now;
     }
   };
 
@@ -72,19 +87,24 @@ export default function ImageZoomModal({ image, onClose }) {
       
       // Calculate new scale
       const scaleChange = currentDistance / lastTouchDistance.current;
-      const newScale = Math.min(Math.max(scale * scaleChange, 1), 5);
+      let newScale = scale * scaleChange;
+      newScale = Math.min(Math.max(newScale, 1), 5);
       
       // Calculate position change to zoom towards pinch center
-      const scaleDiff = newScale - scale;
-      const containerRect = containerRef.current?.getBoundingClientRect();
-      if (containerRect) {
-        const centerX = currentCenter.x - containerRect.left - containerRect.width / 2;
-        const centerY = currentCenter.y - containerRect.top - containerRect.height / 2;
-        
-        setPosition({
-          x: position.x - (centerX * scaleDiff) / scale,
-          y: position.y - (centerY * scaleDiff) / scale,
-        });
+      if (newScale > 1) {
+        const containerRect = containerRef.current?.getBoundingClientRect();
+        if (containerRect) {
+          const centerX = currentCenter.x - containerRect.left - containerRect.width / 2;
+          const centerY = currentCenter.y - containerRect.top - containerRect.height / 2;
+          
+          const scaleDiff = newScale / scale;
+          setPosition({
+            x: currentCenter.x - containerRect.left - containerRect.width / 2 - (currentCenter.x - containerRect.left - containerRect.width / 2 - position.x) * scaleDiff,
+            y: currentCenter.y - containerRect.top - containerRect.height / 2 - (currentCenter.y - containerRect.top - containerRect.height / 2 - position.y) * scaleDiff,
+          });
+        }
+      } else {
+        setPosition({ x: 0, y: 0 });
       }
       
       setScale(newScale);
@@ -108,8 +128,8 @@ export default function ImageZoomModal({ image, onClose }) {
     if (e.touches.length === 0) {
       setIsDragging(false);
       
-      // Reset if zoomed out
-      if (scale <= 1) {
+      // Reset if zoomed out completely
+      if (scale <= 1.05) {
         setScale(1);
         setPosition({ x: 0, y: 0 });
       }
@@ -117,32 +137,40 @@ export default function ImageZoomModal({ image, onClose }) {
   };
 
   const handleDoubleTap = (touch) => {
-    if (scale === 1) {
+    if (scale > 1) {
+      // Zoom out - smooth animation
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+    } else {
       // Zoom in to tap location
       const containerRect = containerRef.current?.getBoundingClientRect();
-      if (containerRect) {
+      const imageRect = imageRef.current?.getBoundingClientRect();
+      
+      if (containerRect && imageRect) {
         const tapX = touch.clientX - containerRect.left - containerRect.width / 2;
         const tapY = touch.clientY - containerRect.top - containerRect.height / 2;
         
         const newScale = 2.5;
+        
+        // Calculate new position to center on tap
         setScale(newScale);
         setPosition({
           x: -tapX * (newScale - 1),
           y: -tapY * (newScale - 1),
         });
       }
-    } else {
-      // Zoom out
-      setScale(1);
-      setPosition({ x: 0, y: 0 });
     }
   };
 
   // Desktop double-click support
   const handleDoubleClick = (e) => {
     e.stopPropagation();
+    e.preventDefault();
     
-    if (scale === 1) {
+    if (scale > 1) {
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+    } else {
       const containerRect = containerRef.current?.getBoundingClientRect();
       if (containerRect) {
         const clickX = e.clientX - containerRect.left - containerRect.width / 2;
@@ -155,15 +183,13 @@ export default function ImageZoomModal({ image, onClose }) {
           y: -clickY * (newScale - 1),
         });
       }
-    } else {
-      setScale(1);
-      setPosition({ x: 0, y: 0 });
     }
   };
 
   // Desktop mouse drag support
   const handleMouseDown = (e) => {
     if (scale > 1) {
+      e.preventDefault();
       setIsDragging(true);
       dragStart.current = {
         x: e.clientX - position.x,
@@ -174,6 +200,7 @@ export default function ImageZoomModal({ image, onClose }) {
 
   const handleMouseMove = (e) => {
     if (isDragging && scale > 1) {
+      e.preventDefault();
       const newX = e.clientX - dragStart.current.x;
       const newY = e.clientY - dragStart.current.y;
       setPosition({ x: newX, y: newY });
@@ -209,17 +236,16 @@ export default function ImageZoomModal({ image, onClose }) {
         onTouchEnd={handleTouchEnd}
       >
         <img 
+          ref={imageRef}
           src={image.url} 
           alt={image.title}
-          className="w-full h-auto"
+          className="max-w-full max-h-full object-contain"
           style={{ 
-            maxWidth: '100%',
-            maxHeight: '100%',
-            objectFit: 'contain',
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
             transformOrigin: 'center center',
-            transition: isDragging || isPinching ? 'none' : 'transform 0.3s ease-out',
+            transition: (isDragging || isPinching) ? 'none' : 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+            willChange: 'transform',
           }}
           onClick={(e) => e.stopPropagation()}
           onDoubleClick={handleDoubleClick}
