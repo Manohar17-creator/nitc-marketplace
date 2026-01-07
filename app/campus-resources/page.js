@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar, Phone, ZoomIn, X, Loader2, FileText, Trash2, Plus, GripVertical } from 'lucide-react'
+import { ArrowLeft, Calendar, Phone, ZoomIn, X, Loader2, FileText, Trash2, Plus, GripVertical, Download, File } from 'lucide-react'
 import { getAuthToken, getUserData } from '@/lib/auth-client'
 import ImageZoomModal from '@/components/ImageZoomModal'
 
@@ -20,10 +20,10 @@ export default function CampusResourcesPage() {
   const [uploadingDocument, setUploadingDocument] = useState(false)
   const [newContactTitle, setNewContactTitle] = useState('')
   const [newDocumentTitle, setNewDocumentTitle] = useState('')
-  const [newDocumentImages, setNewDocumentImages] = useState([])
+  const [newDocumentFiles, setNewDocumentFiles] = useState([])
   
   // Drag state for reordering
-  const [draggedImageIndex, setDraggedImageIndex] = useState(null)
+  const [draggedFileIndex, setDraggedFileIndex] = useState(null)
   const [draggedDocId, setDraggedDocId] = useState(null)
 
   useEffect(() => {
@@ -36,6 +36,21 @@ export default function CampusResourcesPage() {
     if (user && user.email === 'kandula_b220941ec@nitc.ac.in') {
       setIsAdmin(true)
     }
+  }
+
+  // Helper functions to detect file types
+  const isImage = (url) => {
+    return url.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i)
+  }
+
+  const isPDF = (url) => {
+    return url.match(/\.pdf$/i)
+  }
+
+  const getFileType = (url) => {
+    if (isImage(url)) return 'image'
+    if (isPDF(url)) return 'pdf'
+    return 'unknown'
   }
 
   const fetchResources = async () => {
@@ -55,7 +70,10 @@ export default function CampusResourcesPage() {
   }
 
   const handleZoom = (imageUrl, title) => {
-    setZoomedImage({ url: imageUrl, title })
+    // Only zoom images, not PDFs
+    if (isImage(imageUrl)) {
+      setZoomedImage({ url: imageUrl, title })
+    }
   }
 
   // Calendar upload
@@ -150,8 +168,8 @@ export default function CampusResourcesPage() {
     }
   }
 
-  // Document upload (multiple images)
-  const handleDocumentImagesSelect = async (e) => {
+  // Document upload (multiple files - images or PDFs)
+  const handleDocumentFilesSelect = async (e) => {
     const files = Array.from(e.target.files)
     if (files.length === 0) return
 
@@ -167,14 +185,14 @@ export default function CampusResourcesPage() {
         })
         const data = await res.json()
         if (!res.ok) throw new Error('Upload failed')
-        return data.url
+        return { url: data.url, name: file.name, type: file.type }
       })
 
-      const urls = await Promise.all(uploadPromises)
-      setNewDocumentImages(prev => [...prev, ...urls])
+      const uploadedFiles = await Promise.all(uploadPromises)
+      setNewDocumentFiles(prev => [...prev, ...uploadedFiles])
     } catch (error) {
-      console.error('Document images upload error:', error)
-      alert('Failed to upload images')
+      console.error('Document files upload error:', error)
+      alert('Failed to upload files')
     } finally {
       setUploadingDocument(false)
     }
@@ -185,8 +203,8 @@ export default function CampusResourcesPage() {
       alert('Please enter a document title')
       return
     }
-    if (newDocumentImages.length === 0) {
-      alert('Please add at least one image')
+    if (newDocumentFiles.length === 0) {
+      alert('Please add at least one file')
       return
     }
 
@@ -201,7 +219,7 @@ export default function CampusResourcesPage() {
         body: JSON.stringify({
           type: 'document',
           title: newDocumentTitle,
-          imageUrls: newDocumentImages,
+          imageUrls: newDocumentFiles.map(f => f.url), // Keep the same field name for compatibility
           sortOrder: documents.length
         })
       })
@@ -209,7 +227,7 @@ export default function CampusResourcesPage() {
       if (saveRes.ok) {
         await fetchResources()
         setNewDocumentTitle('')
-        setNewDocumentImages([])
+        setNewDocumentFiles([])
         alert('Document added successfully!')
       }
     } catch (error) {
@@ -258,13 +276,13 @@ export default function CampusResourcesPage() {
     }
   }
 
-  const removeDocumentImage = (index) => {
-    setNewDocumentImages(prev => prev.filter((_, i) => i !== index))
+  const removeDocumentFile = (index) => {
+    setNewDocumentFiles(prev => prev.filter((_, i) => i !== index))
   }
 
-  // Drag and drop handlers for document images
-  const handleDragStart = (docId, imageIndex) => {
-    setDraggedImageIndex(imageIndex)
+  // Drag and drop handlers for document files
+  const handleDragStart = (docId, fileIndex) => {
+    setDraggedFileIndex(fileIndex)
     setDraggedDocId(docId)
   }
 
@@ -273,14 +291,14 @@ export default function CampusResourcesPage() {
   }
 
   const handleDrop = async (docId, dropIndex) => {
-    if (draggedDocId !== docId || draggedImageIndex === null) return
+    if (draggedDocId !== docId || draggedFileIndex === null) return
     
     const doc = documents.find(d => d._id === docId)
     if (!doc) return
 
-    const newImageUrls = [...doc.imageUrls]
-    const [draggedUrl] = newImageUrls.splice(draggedImageIndex, 1)
-    newImageUrls.splice(dropIndex, 0, draggedUrl)
+    const newFileUrls = [...doc.imageUrls]
+    const [draggedUrl] = newFileUrls.splice(draggedFileIndex, 1)
+    newFileUrls.splice(dropIndex, 0, draggedUrl)
 
     try {
       const token = getAuthToken()
@@ -292,7 +310,7 @@ export default function CampusResourcesPage() {
         },
         body: JSON.stringify({
           documentId: docId,
-          imageUrls: newImageUrls
+          imageUrls: newFileUrls
         })
       })
 
@@ -301,24 +319,24 @@ export default function CampusResourcesPage() {
       }
     } catch (error) {
       console.error('Reorder error:', error)
-      alert('Failed to reorder images')
+      alert('Failed to reorder files')
     }
 
-    setDraggedImageIndex(null)
+    setDraggedFileIndex(null)
     setDraggedDocId(null)
   }
 
-  // Delete individual image from document
-  const handleDeleteDocumentImage = async (docId, imageIndex) => {
-    if (!confirm('Delete this image?')) return
+  // Delete individual file from document
+  const handleDeleteDocumentFile = async (docId, fileIndex) => {
+    if (!confirm('Delete this file?')) return
 
     const doc = documents.find(d => d._id === docId)
     if (!doc) return
 
-    const newImageUrls = doc.imageUrls.filter((_, idx) => idx !== imageIndex)
+    const newFileUrls = doc.imageUrls.filter((_, idx) => idx !== fileIndex)
 
-    if (newImageUrls.length === 0) {
-      alert('Cannot delete the last image. Delete the entire document instead.')
+    if (newFileUrls.length === 0) {
+      alert('Cannot delete the last file. Delete the entire document instead.')
       return
     }
 
@@ -332,17 +350,17 @@ export default function CampusResourcesPage() {
         },
         body: JSON.stringify({
           documentId: docId,
-          imageUrls: newImageUrls
+          imageUrls: newFileUrls
         })
       })
 
       if (res.ok) {
         await fetchResources()
-        alert('Image deleted')
+        alert('File deleted')
       }
     } catch (error) {
       console.error('Delete error:', error)
-      alert('Failed to delete image')
+      alert('Failed to delete file')
     }
   }
 
@@ -390,15 +408,26 @@ export default function CampusResourcesPage() {
                     className="w-full p-2 border rounded-lg"
                   />
                   
-                  {newDocumentImages.length > 0 && (
+                  {newDocumentFiles.length > 0 && (
                     <div className="space-y-2 mb-3">
-                      <p className="text-sm text-gray-600 font-medium">Selected Images ({newDocumentImages.length}):</p>
-                      {newDocumentImages.map((url, idx) => (
+                      <p className="text-sm text-gray-600 font-medium">Selected Files ({newDocumentFiles.length}):</p>
+                      {newDocumentFiles.map((file, idx) => (
                         <div key={idx} className="relative border rounded-lg p-2 flex items-center gap-3 bg-white">
-                          <img src={url} alt={`Preview ${idx + 1}`} className="w-16 h-16 object-cover rounded" />
-                          <span className="text-sm text-gray-700 flex-1">Image {idx + 1}</span>
+                          {isImage(file.url) ? (
+                            <img src={file.url} alt={`Preview ${idx + 1}`} className="w-16 h-16 object-cover rounded" />
+                          ) : (
+                            <div className="w-16 h-16 bg-red-100 rounded flex items-center justify-center">
+                              <File className="text-red-600" size={32} />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <span className="text-sm text-gray-700 font-medium block">{file.name}</span>
+                            <span className="text-xs text-gray-500">
+                              {isPDF(file.url) ? 'PDF Document' : 'Image'}
+                            </span>
+                          </div>
                           <button
-                            onClick={() => removeDocumentImage(idx)}
+                            onClick={() => removeDocumentFile(idx)}
                             className="text-red-500 hover:text-red-700 p-1"
                           >
                             <X size={18} />
@@ -411,9 +440,9 @@ export default function CampusResourcesPage() {
                   <div className="flex gap-3 flex-wrap">
                     <input 
                       type="file" 
-                      accept="image/*" 
+                      accept="image/*,application/pdf" 
                       multiple
-                      onChange={handleDocumentImagesSelect}
+                      onChange={handleDocumentFilesSelect}
                       className="hidden"
                       id="document-upload"
                       disabled={uploadingDocument}
@@ -423,10 +452,10 @@ export default function CampusResourcesPage() {
                       className={`cursor-pointer px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors flex items-center gap-2 ${uploadingDocument ? 'opacity-50' : ''}`}
                     >
                       <Plus size={18} />
-                      {uploadingDocument ? 'Uploading...' : 'Add Images'}
+                      {uploadingDocument ? 'Uploading...' : 'Add Files (Images/PDFs)'}
                     </label>
                     
-                    {newDocumentImages.length > 0 && (
+                    {newDocumentFiles.length > 0 && (
                       <button
                         onClick={handleDocumentSubmit}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
@@ -458,7 +487,7 @@ export default function CampusResourcesPage() {
                       )}
                     </div>
                     
-                    {/* Vertical Image List with Drag & Drop */}
+                    {/* Vertical File List with Drag & Drop */}
                     <div className="space-y-3">
                       {doc.imageUrls?.map((url, idx) => (
                         <div 
@@ -474,21 +503,52 @@ export default function CampusResourcesPage() {
                               <GripVertical size={18} />
                             </div>
                           )}
-                          <img 
-                            src={url} 
-                            alt={`${doc.title} - Page ${idx + 1}`}
-                            className="w-full rounded-lg border border-gray-300 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                            onClick={() => handleZoom(url, `${doc.title} - Page ${idx + 1}`)}
-                          />
-                          <button
-                            onClick={() => handleZoom(url, `${doc.title} - Page ${idx + 1}`)}
-                            className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm hover:bg-black/80"
-                          >
-                            <ZoomIn size={20} />
-                          </button>
+                          
+                          {/* Render based on file type */}
+                          {isPDF(url) ? (
+                            // PDF Viewer
+                            <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
+                              <div className="bg-red-50 px-4 py-2 flex items-center justify-between border-b">
+                                <div className="flex items-center gap-2">
+                                  <File className="text-red-600" size={20} />
+                                  <span className="font-semibold text-gray-700">PDF Document - Page {idx + 1}</span>
+                                </div>
+                                <a 
+                                  href={url} 
+                                  download
+                                  className="flex items-center gap-2 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                                >
+                                  <Download size={16} />
+                                  Download
+                                </a>
+                              </div>
+                              <iframe 
+                                src={url} 
+                                className="w-full h-[600px]"
+                                title={`${doc.title} - Page ${idx + 1}`}
+                              />
+                            </div>
+                          ) : (
+                            // Image Viewer
+                            <div className="relative">
+                              <img 
+                                src={url} 
+                                alt={`${doc.title} - Page ${idx + 1}`}
+                                className="w-full rounded-lg border border-gray-300 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                onClick={() => handleZoom(url, `${doc.title} - Page ${idx + 1}`)}
+                              />
+                              <button
+                                onClick={() => handleZoom(url, `${doc.title} - Page ${idx + 1}`)}
+                                className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm hover:bg-black/80"
+                              >
+                                <ZoomIn size={20} />
+                              </button>
+                            </div>
+                          )}
+                          
                           {isAdmin && (
                             <button
-                              onClick={() => handleDeleteDocumentImage(doc._id, idx)}
+                              onClick={() => handleDeleteDocumentFile(doc._id, idx)}
                               className="absolute bottom-3 right-3 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm hover:bg-red-600"
                             >
                               <Trash2 size={16} />
@@ -526,18 +586,41 @@ export default function CampusResourcesPage() {
           <div className="p-5">
             {calendar ? (
               <div className="relative group mb-4">
-                <img 
-                  src={calendar.imageUrl} 
-                  alt="Academic Calendar"
-                  className="w-full rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => handleZoom(calendar.imageUrl, 'Academic Calendar')}
-                />
-                <button
-                  onClick={() => handleZoom(calendar.imageUrl, 'Academic Calendar')}
-                  className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm hover:bg-black/80"
-                >
-                  <ZoomIn size={20} />
-                </button>
+                {isPDF(calendar.imageUrl) ? (
+                  <div className="border border-gray-300 rounded-lg overflow-hidden">
+                    <div className="bg-blue-50 px-4 py-2 flex items-center justify-between border-b">
+                      <span className="font-semibold text-gray-700">Calendar PDF</span>
+                      <a 
+                        href={calendar.imageUrl} 
+                        download
+                        className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      >
+                        <Download size={16} />
+                        Download
+                      </a>
+                    </div>
+                    <iframe 
+                      src={calendar.imageUrl} 
+                      className="w-full h-[600px]"
+                      title="Academic Calendar"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <img 
+                      src={calendar.imageUrl} 
+                      alt="Academic Calendar"
+                      className="w-full rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => handleZoom(calendar.imageUrl, 'Academic Calendar')}
+                    />
+                    <button
+                      onClick={() => handleZoom(calendar.imageUrl, 'Academic Calendar')}
+                      className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm hover:bg-black/80"
+                    >
+                      <ZoomIn size={20} />
+                    </button>
+                  </>
+                )}
                 <p className="text-xs text-gray-500 mt-2">Last updated: {new Date(calendar.updatedAt).toLocaleString()}</p>
               </div>
             ) : (
@@ -551,7 +634,7 @@ export default function CampusResourcesPage() {
               <div>
                 <input 
                   type="file" 
-                  accept="image/*" 
+                  accept="image/*,application/pdf" 
                   onChange={handleCalendarUpload}
                   className="hidden"
                   id="calendar-upload"
@@ -590,7 +673,7 @@ export default function CampusResourcesPage() {
                   <div className="flex gap-3">
                     <input 
                       type="file" 
-                      accept="image/*" 
+                      accept="image/*,application/pdf" 
                       onChange={handleContactUpload}
                       className="hidden"
                       id="contact-upload"
@@ -611,23 +694,46 @@ export default function CampusResourcesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {contacts.map((contact, index) => (
                   <div key={contact._id || index} className="relative group">
-                    <img 
-                      src={contact.imageUrl} 
-                      alt={contact.title || `Contact Sheet ${index + 1}`}
-                      className="w-full rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => handleZoom(contact.imageUrl, contact.title || `Contact Sheet ${index + 1}`)}
-                    />
+                    {isPDF(contact.imageUrl) ? (
+                      <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
+                        <div className="bg-green-50 px-4 py-2 flex items-center justify-between border-b">
+                          <span className="font-semibold text-gray-700">{contact.title || `Contact Sheet ${index + 1}`}</span>
+                          <a 
+                            href={contact.imageUrl} 
+                            download
+                            className="flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700"
+                          >
+                            <Download size={14} />
+                            Download
+                          </a>
+                        </div>
+                        <iframe 
+                          src={contact.imageUrl} 
+                          className="w-full h-[400px]"
+                          title={contact.title || `Contact Sheet ${index + 1}`}
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <img 
+                          src={contact.imageUrl} 
+                          alt={contact.title || `Contact Sheet ${index + 1}`}
+                          className="w-full rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => handleZoom(contact.imageUrl, contact.title || `Contact Sheet ${index + 1}`)}
+                        />
+                        <button
+                          onClick={() => handleZoom(contact.imageUrl, contact.title || `Contact Sheet ${index + 1}`)}
+                          className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm hover:bg-black/80"
+                        >
+                          <ZoomIn size={20} />
+                        </button>
+                      </>
+                    )}
                     {contact.title && (
                       <p className="mt-2 text-sm font-semibold text-gray-700 text-center">
                         {contact.title}
                       </p>
                     )}
-                    <button
-                      onClick={() => handleZoom(contact.imageUrl, contact.title || `Contact Sheet ${index + 1}`)}
-                      className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm hover:bg-black/80"
-                    >
-                      <ZoomIn size={20} />
-                    </button>
                     {isAdmin && (
                       <button
                         onClick={() => handleDeleteContact(contact._id)}
@@ -649,13 +755,13 @@ export default function CampusResourcesPage() {
         </div>
       </div>
 
-      {/* Fixed Zoom Modal for Mobile */}
+      {/* Fixed Zoom Modal for Mobile (images only) */}
       {zoomedImage && (
-  <ImageZoomModal 
-    image={zoomedImage} 
-    onClose={() => setZoomedImage(null)} 
-  />
-)}
+        <ImageZoomModal 
+          image={zoomedImage} 
+          onClose={() => setZoomedImage(null)} 
+        />
+        )}
     </div>
   )
 }
