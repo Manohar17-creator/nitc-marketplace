@@ -14,13 +14,11 @@ export default function ImageZoomModal({ image, onClose }) {
   const lastTouchCenter = useRef({ x: 0, y: 0 });
   const dragStart = useRef({ x: 0, y: 0 });
   const lastTap = useRef(0);
-  const tapTimeout = useRef(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = 'unset';
-      if (tapTimeout.current) clearTimeout(tapTimeout.current);
     };
   }, []);
 
@@ -38,12 +36,6 @@ export default function ImageZoomModal({ image, onClose }) {
   };
 
   const handleTouchStart = (e) => {
-    // Clear any pending tap timeout
-    if (tapTimeout.current) {
-      clearTimeout(tapTimeout.current);
-      tapTimeout.current = null;
-    }
-
     if (e.touches.length === 2) {
       // Pinch zoom
       e.preventDefault();
@@ -68,12 +60,10 @@ export default function ImageZoomModal({ image, onClose }) {
         // Double tap detected
         e.preventDefault();
         handleDoubleTap(e.touches[0]);
+        lastTap.current = 0; // Reset to prevent triple tap issues
       } else {
-        // First tap - wait to see if there's a second tap
+        // First tap
         lastTap.current = now;
-        tapTimeout.current = setTimeout(() => {
-          tapTimeout.current = null;
-        }, DOUBLE_TAP_DELAY);
       }
     }
   };
@@ -144,9 +134,8 @@ export default function ImageZoomModal({ image, onClose }) {
     } else {
       // Zoom in to tap location
       const containerRect = containerRef.current?.getBoundingClientRect();
-      const imageRect = imageRef.current?.getBoundingClientRect();
       
-      if (containerRect && imageRect) {
+      if (containerRect) {
         const tapX = touch.clientX - containerRect.left - containerRect.width / 2;
         const tapY = touch.clientY - containerRect.top - containerRect.height / 2;
         
@@ -213,8 +202,7 @@ export default function ImageZoomModal({ image, onClose }) {
 
   return (
     <div 
-      className="fixed inset-0 bg-black z-[100]"
-      style={{ width: '100vw', height: '100vh' }}
+      className="fixed inset-0 bg-black z-[100] flex items-center justify-center"
       onClick={scale === 1 ? onClose : undefined}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -230,7 +218,7 @@ export default function ImageZoomModal({ image, onClose }) {
       <div 
         ref={containerRef}
         className="w-full h-full flex items-center justify-center overflow-hidden select-none"
-        style={{ padding: '60px 16px', touchAction: 'none' }}
+        style={{ touchAction: 'none' }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -239,7 +227,7 @@ export default function ImageZoomModal({ image, onClose }) {
           ref={imageRef}
           src={image.url} 
           alt={image.title}
-          className="max-w-full max-h-full object-contain"
+          className="max-w-[90vw] max-h-[90vh] object-contain"
           style={{ 
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
             transformOrigin: 'center center',
